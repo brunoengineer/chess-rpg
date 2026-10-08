@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sfx } from '../audio';
 import { Board, type FxItem, type HintKind } from '../components/Board';
 import { BossToken, PieceGlyph } from '../components/Piece';
@@ -6,20 +6,27 @@ import { Modal } from '../components/Modal';
 import { requestAiMove } from '../game/aiClient';
 import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, REGIONS, arenaStage, isCleared, nextStage } from '../game/campaign';
+import { CARDS, cardPlayable, playCard, validSquares, type CardId } from '../game/cards';
 import { computeResult, lootFromFx, type BattleResult } from '../game/economy';
 import { PASS, applyMove, cloneBattle, enemyPostTurn, enemyPreTurn, genMoves, genUnitMoves, material } from '../game/engine';
-import { PIECES } from '../game/pieces';
+import { PIECES, PIECE_ORDER } from '../game/pieces';
+import { RANKS, levelInfo } from '../game/ranks';
 import type { Battle, FxEvent, Move, Outcome, PieceType, StageDef, Unit } from '../game/types';
-import { finishBattle } from '../state/actions';
+import { consumeCard, finishBattle, type FinishExtras } from '../state/actions';
+import { addCount, classRanks, count } from '../state/save';
 import { useStore } from '../state/store';
 import { Stars } from './CampaignTab';
 
-interface Final {
+interface Final extends FinishExtras {
   battle: Battle;
   stage: StageDef;
   result: BattleResult;
-  unlocked: PieceType[];
-  arenaUnlocked: boolean;
+}
+
+interface Targeting {
+  id: CardId;
+  picks: number[];
+  reinforce?: PieceType;
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -45,10 +52,12 @@ export function BattleScreen() {
   const [shake, setShake] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [confirmSurrender, setConfirmSurrender] = useState(false);
+  const [targeting, setTargeting] = useState<Targeting | null>(null);
   const busy = useRef(false);
 
   const battle = final?.battle ?? active?.battle;
   const stage = final?.stage ?? active?.stage;
+  const levels = useMemo(() => Object.fromEntries(PIECE_ORDER.map((t) => [t, levelInfo(save.xp[t] ?? 0).level])), [save.xp]);
 
   useEffect(() => {
     if (!battle) setView({ name: 'hub', tab: 'campaign' });
@@ -98,6 +107,10 @@ export function BattleScreen() {
           items.push({ ...base, kind: 'promote', text: '👑' });
           sfx.promote();
           break;
+        case 'block':
+          items.push({ ...base, kind: 'promote', text: e.icon ?? '🛡️' });
+          sfx.select();
+          break;
         case 'summon':
           items.push({ ...base, kind: 'summon' });
           sfx.summon();
@@ -124,14 +137,16 @@ export function BattleScreen() {
     if (!s.active) return;
     const st = s.active.stage;
     const ended = { ...nb, over: outcome };
-    const result = computeResult(ended, outcome, st, s.active.loot, isCleared(s.stages, st.id));
+    const cardsUsed = (nb.cardsUsed ?? 0) + (s.active.preCards ?? 0);
+    const result = computeResult(ended, outcome, st, s.active.loot, isCleared(s.stages, st.id), cardsUsed);
     const extra = finishBattle(st, result, s.active.captures);
     setFinal({ battle: ended, stage: st, result, ...extra });
     setSelected(null);
+    setTargeting(null);
     setTimeout(result.win ? sfx.win : sfx.lose, 300);
   }, []);
 
-  /* ---------------- Enemy turn ---------------- */
+  /* ---------------- Enemy turn (and forced passes) ---------------- */
   useEffect(() => {
     if (!battle || !stage || final || battle.over || busy.current) return;
     if (battle.turn === 'E') {
@@ -177,6 +192,9 @@ export function BattleScreen() {
         setThinking(false);
         if (b.over) setTimeout(() => endBattle(b, b.over!), fast ? 300 : 700);
       })();
+    } else if (battle.quietOnly && !genMoves(battle, 'P').some((m) => m.kind === 'move')) {
+      // Double Move bonus with nothing to do: hand the turn over.
+      commit({ ...battle, quietOnly: false, turn: 'E' });
     } else if (genMoves(battle, 'P').length === 0) {
       busy.current = true;
       useStore.getState().toast('No moves — pass', '⏸');
@@ -194,11 +212,58 @@ export function BattleScreen() {
   const theme = stage.isArena ? ARENA_THEME : REGIONS[stage.region - 1];
   const myTurn = battle.turn === 'P' && !battle.over && !final && !thinking;
   const sel: Unit | null = selected !== null ? battle.units[selected] ?? null : null;
-  const selMoves: Move[] = sel && sel.alive && sel.side === 'P' && myTurn ? genUnitMoves(battle, sel.id) : [];
+  const selMoves: Move[] =
+    sel && sel.alive && sel.side === 'P' && myTurn && !targeting
+      ? genUnitMoves(battle, sel.id).filter((m) => !battle.quietOnly || m.kind === 'move')
+      : [];
 
+  /* ---------------- Cards ---------------- */
+  const loadout = active?.cards ?? [];
+  const reserve = PIECE_ORDER.filter((t) => count(save.army, t) > 0);
+  const cardTurnFree = myTurn && battle.cardPly !== battle.ply && !battle.quietOnly;
+  const canPlay = (id: CardId) =>
+    cardTurnFree && (id === 'rewind' ? !!active?.undo : cardPlayable(battle, id, stage.deployRows, reserve));
+  const step = targeting && (targeting.id !== 'reinforce' || targeting.reinforce) ? CARDS[targeting.id].steps[targeting.picks.length] : undefined;
+  const targets = step ? validSquares(battle, step, stage.deployRows, targeting!.picks[0]) : undefined;
+
+  const resolveCard = (id: CardId, squares: number[], reinforce?: PieceType) => {
+    const { battle: nb, fx: evs } = playCard(battle, id, squares, { reinforce, ranks: classRanks(save.xp) });
+    const loot = lootFromFx(evs, stage, active?.lootMult ?? 1);
+    playFx(evs, stage);
+    commit(nb, loot.coins, loot.captures);
+    consumeCard(id);
+    if (reinforce) update((s) => addCount(s.army, reinforce, -1));
+    setTargeting(null);
+    setSelected(null);
+    if (nb.over) setTimeout(() => endBattle(nb, nb.over!), 600);
+  };
+
+  const startCard = (id: CardId) => {
+    if (!canPlay(id)) return;
+    sfx.select();
+    if (id === 'rewind') {
+      const undo = active!.undo!;
+      const restored = { ...undo.battle, cardsUsed: (battle.cardsUsed ?? 0) + 1, cardPly: undo.battle.ply };
+      update((s) => {
+        if (!s.active) return;
+        s.active.battle = restored;
+        s.active.loot = undo.loot;
+        s.active.captures = undo.captures;
+        s.active.undo = null;
+      });
+      consumeCard(id);
+      setSelected(null);
+      return;
+    }
+    if (!CARDS[id].steps.length) return resolveCard(id, []);
+    setTargeting({ id, picks: [] });
+    setSelected(null);
+  };
+
+  /* ---------------- Hints ---------------- */
   const hints = new Map<number, HintKind>();
   const showHints = sel?.side === 'P' ? save.settings.showMoves : save.settings.showEnemyMoves;
-  if (sel && sel.alive && showHints) {
+  if (sel && sel.alive && showHints && !targeting) {
     const ms = sel.side === 'P' ? selMoves : genUnitMoves(battle, sel.id);
     for (const m of ms) {
       if (m.kind === 'strike') {
@@ -210,17 +275,37 @@ export function BattleScreen() {
 
   const onCell = (x: number, y: number) => {
     if (final) return;
-    const c = battle.grid[y * battle.w + x];
+    const sq = y * battle.w + x;
+    const c = battle.grid[sq];
+
+    if (targeting) {
+      if (!targets?.has(sq)) return;
+      const picks = [...targeting.picks, sq];
+      if (picks.length >= CARDS[targeting.id].steps.length) resolveCard(targeting.id, picks, targeting.reinforce);
+      else setTargeting({ ...targeting, picks });
+      sfx.select();
+      return;
+    }
+
     if (sel && sel.side === 'P' && myTurn) {
       const m = selMoves.find((m) => (m.kind === 'strike' ? c === m.target! + 1 : m.x === x && m.y === y));
       if (m) {
         const evs: FxEvent[] = [];
-        const nb = applyMove(battle, m, evs);
-        const loot = lootFromFx(evs, stage);
+        let nb = applyMove(battle, m, evs);
+        if (!nb.over && battle.bonusMove) nb = { ...nb, turn: 'P', bonusMove: false, quietOnly: true };
+        else if (battle.quietOnly) nb = { ...nb, quietOnly: false };
+        const loot = lootFromFx(evs, stage, active?.lootMult ?? 1);
         if (!evs.length) sfx.move();
         playFx(evs, stage);
         setSelected(null);
-        commit(nb, loot.coins, loot.captures);
+        const before = { battle, loot: active!.loot, captures: active!.captures };
+        update((s) => {
+          if (!s.active) return;
+          if (!battle.quietOnly) s.active.undo = before;
+          s.active.battle = nb;
+          s.active.loot += loot.coins;
+          s.active.captures += loot.captures;
+        });
         if (nb.over) setTimeout(() => endBattle(nb, nb.over!), 600);
         return;
       }
@@ -236,17 +321,22 @@ export function BattleScreen() {
   const pMat = material(battle, 'P'), eMat = material(battle, 'E');
   const capturedByMe = battle.units.filter((u) => u.side === 'E' && !u.alive && u.type !== 'boss');
   const myFallen = battle.units.filter((u) => u.side === 'P' && !u.alive);
-  const turnNo = Math.min(Math.floor(battle.ply / 2) + 1, stage.maxTurns);
-  const turnsLeft = stage.maxTurns - turnNo;
+  const turnNo = Math.min(Math.floor(battle.ply / 2) + 1, Math.ceil(battle.maxPly / 2));
+  const maxTurns = Math.ceil(battle.maxPly / 2);
+  const turnsLeft = maxTurns - turnNo;
   const loot = final ? final.result.loot : active?.loot ?? 0;
+  const cardCounts = [...new Set(loadout)].map((id) => [id, loadout.filter((c) => c === id).length] as const);
 
   return (
     <div className="battle screen-split">
       <div className="board-col">
         <div className="screen-head">
-          <h2>{stage.name}</h2>
+          <h2>
+            {stage.hard && '🔥 '}
+            {stage.name}
+          </h2>
           <div className={`turn-badge ${myTurn ? 'mine' : 'theirs'}`}>
-            {battle.over || final ? '—' : myTurn ? 'Your move' : <>Enemy<span className="dots" /></>}
+            {battle.over || final ? '—' : myTurn ? (battle.quietOnly ? '⏩ Bonus move' : 'Your move') : <>Enemy<span className="dots" /></>}
           </div>
         </div>
         <Board
@@ -258,16 +348,53 @@ export function BattleScreen() {
           fx={fx}
           shake={shake}
           dimmed={!myTurn && !final}
+          levels={levels}
+          targets={targets}
           onCell={onCell}
         />
+        {targeting && (
+          <div className="targeting">
+            <span>
+              {CARDS[targeting.id].icon} {CARDS[targeting.id].name}
+            </span>
+            {targeting.id === 'reinforce' && !targeting.reinforce && (
+              <span className="reserve">
+                {reserve.map((t) => (
+                  <button key={t} onClick={() => setTargeting({ ...targeting, reinforce: t })} title={PIECES[t].name}>
+                    <PieceGlyph type={t} />
+                    <small>×{count(save.army, t)}</small>
+                  </button>
+                ))}
+              </span>
+            )}
+            <button className="btn btn-ghost btn-small" onClick={() => setTargeting(null)}>✕</button>
+          </div>
+        )}
         {battle.telegraph && <div className="telegraph-warning">{battle.telegraph.kind === 'breath' ? '🔥 Fire next turn!' : '⚠ Quake next turn!'}</div>}
       </div>
 
       <aside className="side-col">
+        {cardCounts.length > 0 && !final && (
+          <section className="card-bar">
+            {cardCounts.map(([id, n]) => (
+              <button
+                key={id}
+                className={`card-btn ${targeting?.id === id ? 'active' : ''}`}
+                disabled={!canPlay(id)}
+                onClick={() => (targeting?.id === id ? setTargeting(null) : startCard(id))}
+                title={`${CARDS[id].name}: ${CARDS[id].desc}`}
+              >
+                <span>{CARDS[id].icon}</span>
+                {n > 1 && <small>×{n}</small>}
+              </button>
+            ))}
+          </section>
+        )}
         <section className="panel battle-info">
           <div className="info-row">
-            <span className={turnsLeft <= 5 && !final ? 'warn' : ''} title="Turn limit">⏱ {turnNo}/{stage.maxTurns}</span>
-            <span className="loot" title="Loot">🪙 {loot}</span>
+            <span className={turnsLeft <= 5 && !final ? 'warn' : ''} title="Turn limit">⏱ {turnNo}/{maxTurns}</span>
+            {(battle.cardsUsed ?? 0) + (active?.preCards ?? 0) > 0 && <span className="muted small" title="Cards used: max ★★">🃏 ★★</span>}
+            <span className="loot" title="Loot">🪙 {loot}{(active?.lootMult ?? 1) > 1 && ' ×2'}</span>
           </div>
           <div className="strength" title="Army strength">
             <span>{pMat.toFixed(0)}</span>
@@ -304,11 +431,7 @@ export function BattleScreen() {
         </section>
 
         <div className="battle-actions">
-          <button
-            className="btn btn-ghost btn-small"
-            title="Move hints"
-            onClick={() => update((s) => void (s.settings.showMoves = !s.settings.showMoves))}
-          >
+          <button className="btn btn-ghost btn-small" title="Move hints" onClick={() => update((s) => void (s.settings.showMoves = !s.settings.showMoves))}>
             {save.settings.showMoves ? '👁' : '🙈'}
           </button>
           {!final && (
@@ -345,29 +468,63 @@ export function BattleScreen() {
 
 function ResultModal({ final }: { final: Final }) {
   const { setView, save } = useStore();
-  const { result, stage, unlocked, arenaUnlocked } = final;
+  const { result, stage, unlocked, cardsUnlocked, arenaUnlocked, hardUnlocked, levelUps, skinsEarned } = final;
   const { outcome } = result;
   const title = result.win ? 'Victory!' : outcome.winner === 'draw' ? 'Draw' : 'Defeat';
   const reason = REASONS[outcome.reason][result.win ? 0 : 1];
   const next = result.win ? nextStage(stage) : undefined;
   const home = () => setView({ name: 'hub', tab: stage.isArena ? 'arena' : 'campaign' });
   const retry = () => setView({ name: 'deploy', stage: stage.isArena ? arenaStage(save.arena.level) : stage });
+  const xpTypes = PIECE_ORDER.filter((t) => result.xp[t]);
 
   return (
     <Modal className={`result ${result.win ? 'win' : 'lose'}`}>
       <h1 className="result-title">{title}</h1>
       {reason && <p className="result-reason">{reason}</p>}
       {result.win && <Stars n={result.stars} />}
+      {result.cardCapped && <p className="muted small">🃏 ★★ max</p>}
       <div className="breakdown">
         <div><span>Loot</span><b>🪙 {result.loot}</b></div>
         {result.reward > 0 && <div><span>Reward</span><b>🪙 {result.reward}</b></div>}
         {result.firstClearBonus > 0 && <div className="bonus"><span>First win</span><b>🪙 {result.firstClearBonus}</b></div>}
         <div className="total"><span>Total</span><b>🪙 {result.total}</b></div>
       </div>
+      {xpTypes.length > 0 && (
+        <div className="xp-gains">
+          {xpTypes.map((t) => {
+            const up = levelUps.find((l) => l.type === t);
+            return (
+              <span key={t} className={`xp-gain ${up ? 'up' : ''} ${up?.rankUp ? 'rank-up' : ''}`} title={up?.rankUp ? RANKS[Math.floor(up.to / 10)] : undefined}>
+                <PieceGlyph type={t} level={up?.to ?? levelInfo(save.xp[t] ?? 0).level} rank={levelInfo(save.xp[t] ?? 0).rank} />
+                <small>+{result.xp[t]} XP</small>
+                {up?.rankUp && <b>{RANKS[Math.floor(up.to / 10)]}!</b>}
+              </span>
+            );
+          })}
+        </div>
+      )}
       {unlocked.map((t) => (
         <button key={t} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop' })}>
           <PieceGlyph type={t} className="big" />
           <b>New: {PIECES[t].name}</b>
+        </button>
+      ))}
+      {cardsUnlocked.length > 0 && (
+        <button className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop' })}>
+          <span className="big-icon">{cardsUnlocked.map((c) => CARDS[c].icon).join(' ')}</span>
+          <b>New cards</b>
+        </button>
+      )}
+      {hardUnlocked && (
+        <button className="unlock" onClick={home}>
+          <span className="big-icon">🔥</span>
+          <b>New: Hard mode</b>
+        </button>
+      )}
+      {skinsEarned.map((n) => (
+        <button key={n} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop' })}>
+          <span className="big-icon">🎨</span>
+          <b>New skin: {n}</b>
         </button>
       ))}
       {arenaUnlocked && (

@@ -323,12 +323,19 @@ button { font: inherit; color: inherit; }
 /* ───────────────────────── Glyphs ───────────────────────── */
 .glyph { position: relative; display: inline-grid; place-items: center; font-family: var(--chess); line-height: 1; font-style: normal; }
 .glyph-main { display: block; }
+/* Player pieces are painted from skin variables (see "Skins" below). */
 .glyph.side-P .glyph-main {
-  color: #fff7e6;
-  text-shadow:
-    0.035em 0 0 #2b1c0c, -0.035em 0 0 #2b1c0c, 0 0.035em 0 #2b1c0c, 0 -0.035em 0 #2b1c0c,
-    0.025em 0.025em 0 #2b1c0c, -0.025em -0.025em 0 #2b1c0c, 0.025em -0.025em 0 #2b1c0c, -0.025em 0.025em 0 #2b1c0c,
-    0 0.08em 0.12em rgba(0, 0, 0, 0.5);
+  background: var(--p-fill);
+  background-size: 220% 220%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  filter:
+    drop-shadow(0.032em 0 0 var(--p-stroke)) drop-shadow(-0.032em 0 0 var(--p-stroke))
+    drop-shadow(0 0.032em 0 var(--p-stroke)) drop-shadow(0 -0.032em 0 var(--p-stroke))
+    drop-shadow(0 0.07em 0.08em rgba(0, 0, 0, 0.5)) var(--p-glow);
+  animation: var(--p-anim, none);
 }
 .glyph.side-E .glyph-main {
   color: #231a33;
@@ -338,7 +345,7 @@ button { font: inherit; color: inherit; }
 }
 .glyph.big { font-size: 2.6rem; }
 .glyph-badge {
-  position: absolute; right: -0.2em; top: -0.12em;
+  position: absolute; right: -0.2em; bottom: -0.02em;
   width: 0.62em; height: 0.62em; border-radius: 50%;
   display: grid; place-items: center; font-size: 0.62em;
   background: radial-gradient(circle at 35% 30%, #ffe9a0, #d48f12);
@@ -364,7 +371,7 @@ button { font: inherit; color: inherit; }
   width: var(--bs);
   padding: 10px;
   border-radius: 16px;
-  background: linear-gradient(145deg, #4a3320, #24170c 60%, #3b2817);
+  background: var(--sk-frame, linear-gradient(145deg, #4a3320, #24170c 60%, #3b2817));
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.55),
     0 0 0 1px rgba(255, 255, 255, 0.06),
@@ -386,9 +393,8 @@ button { font: inherit; color: inherit; }
   user-select: none;
 }
 .cell { position: relative; aspect-ratio: 1; cursor: pointer; }
-.cell.light { background: var(--light); }
-.cell.dark { background: var(--dark); }
-.cell.light, .cell.dark { background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.06)); }
+.cell.light { background-color: var(--sk-light, var(--light)); background-image: var(--sk-light-img, linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.06))); }
+.cell.dark { background-color: var(--sk-dark, var(--dark)); background-image: var(--sk-dark-img, linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.06))); }
 .cell::after { content: ''; position: absolute; pointer-events: none; }
 .cell.last::before { content: ''; position: absolute; inset: 0; background: rgba(255, 214, 80, 0.3); }
 .cell.deploy::before {
@@ -404,9 +410,9 @@ button { font: inherit; color: inherit; }
   background: radial-gradient(circle at 35% 30%, #b6ada0, #6f665b 55%, #3e3832);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.45), inset -3px -4px 6px rgba(0, 0, 0, 0.35);
 }
-.cell.hint-move::after { inset: 36%; border-radius: 50%; background: rgba(30, 24, 50, 0.38); }
+.cell.hint-move::after { inset: 36%; border-radius: 50%; background: var(--sk-hint, rgba(30, 24, 50, 0.38)); }
 .cell.hint-move.tone-enemy::after { background: rgba(220, 40, 40, 0.5); }
-.cell.hint-capture::after { inset: 4%; border-radius: 50%; border: calc(var(--cell) * 0.07) solid rgba(30, 24, 50, 0.45); }
+.cell.hint-capture::after { inset: 4%; border-radius: 50%; border: calc(var(--cell) * 0.07) solid var(--sk-hint, rgba(30, 24, 50, 0.45)); }
 .cell.hint-capture.tone-enemy::after { border-color: rgba(230, 40, 40, 0.7); }
 .cell.hint-strike::after { inset: 0; background: rgba(255, 70, 50, 0.32); box-shadow: inset 0 0 0 3px rgba(255, 120, 90, 0.8); }
 .cell.hint:hover::after { filter: brightness(1.3); }

@@ -1,5 +1,6 @@
 import { BOSSES } from './bosses';
 import { LETTERS, PIECES, bossDamage } from './pieces';
+import { profile } from './ranks';
 import type { Battle, FxEvent, Move, Outcome, Placement, Side, StageDef, Unit, PieceType } from './types';
 
 export const other = (s: Side): Side => (s === 'P' ? 'E' : 'P');
@@ -30,24 +31,35 @@ export function unitAt(b: Battle, x: number, y: number): Unit | null {
   return c > 0 ? b.units[c - 1] : null;
 }
 
-function addUnit(b: Battle, u: Omit<Unit, 'id' | 'alive' | 'moved'>): Unit {
+export function addUnit(b: Battle, u: Omit<Unit, 'id' | 'alive' | 'moved'>): Unit {
   const unit: Unit = { ...u, id: b.units.length, alive: true, moved: false };
+  if (unit.type !== 'boss' && profile(unit.type, unit.rank ?? 0).shield) unit.shield = true;
   b.units.push(unit);
   setFootprint(b, unit, unit.id + 1);
   return unit;
 }
 
-export function createBattle(stage: StageDef, placements: Placement[]): Battle {
+/** Moves a unit to an empty square without spending a turn (card effects). */
+export function relocate(b: Battle, id: number, x: number, y: number) {
+  const u = b.units[id];
+  setFootprint(b, u, 0);
+  u.x = x;
+  u.y = y;
+  setFootprint(b, u, id + 1);
+}
+
+export function createBattle(stage: StageDef, placements: Placement[], playerRanks: Partial<Record<PieceType, number>> = {}): Battle {
   const { w, h } = stage;
+  const enemyRank = stage.enemyRank ?? 0;
   const b: Battle = {
     w, h, units: [], grid: new Array(w * h).fill(0), turn: 'P', ply: 0,
     maxPly: stage.maxTurns * 2, passes: 0, bossStage: !!stage.boss, enemyTurns: 0,
-    telegraph: null, over: null, lastMove: null,
+    telegraph: null, over: null, lastMove: null, enemyRank: enemyRank || undefined,
   };
   stage.layout.forEach((row, y) => {
     [...row].forEach((ch, x) => {
       if (ch === '#') b.grid[y * w + x] = -1;
-      else if (LETTERS[ch]) addUnit(b, { type: LETTERS[ch], side: 'E', x, y, size: 1 });
+      else if (LETTERS[ch]) addUnit(b, { type: LETTERS[ch], side: 'E', x, y, size: 1, rank: enemyRank || undefined });
     });
   });
   if (stage.boss) {
@@ -57,7 +69,7 @@ export function createBattle(stage: StageDef, placements: Placement[]): Battle {
   }
   for (const p of placements) {
     if (b.grid[p.y * w + p.x] !== 0) continue;
-    addUnit(b, { type: p.type, side: 'P', x: p.x, y: p.y, size: 1, temp: p.temp || undefined });
+    addUnit(b, { type: p.type, side: 'P', x: p.x, y: p.y, size: 1, temp: p.temp || undefined, rank: playerRanks[p.type] || undefined });
   }
   return b;
 }
@@ -77,11 +89,16 @@ export function genMoves(b: Battle, side: Side): Move[] {
 
 export function genUnitMoves(b: Battle, i: number, out: Move[] = []): Move[] {
   const u = b.units[i];
+  if ((u.frozen ?? 0) > 0) return out;
   if (u.type === 'boss') return genBossMoves(b, i, out);
   const { w, h, grid, units } = b;
+  const prof = profile(u.type, u.rank ?? 0);
   const struck: number[] = [];
-  const lastRow = u.side === 'P' ? 0 : h - 1;
   const isPawn = u.type === 'pawn';
+  const dir = u.side === 'P' ? -1 : 1;
+  const lastRow = u.side === 'P' ? 0 : h - 1;
+  const promoAt = (ty: number) => isPawn && (ty === lastRow || (prof.promoEarly && ty === lastRow - dir));
+  const inB = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h;
 
   const enemyAt = (tx: number, ty: number) => {
     const c = grid[ty * w + tx];
@@ -94,44 +111,46 @@ export function genUnitMoves(b: Battle, i: number, out: Move[] = []): Move[] {
         out.push({ u: i, kind: 'strike', x: tx, y: ty, target: c - 1 });
       }
     } else {
-      out.push({ u: i, kind: 'capture', x: tx, y: ty, target: c - 1, promo: isPawn && ty === lastRow });
+      out.push({ u: i, kind: 'capture', x: tx, y: ty, target: c - 1, promo: promoAt(ty) });
     }
   };
-  /** Returns true when the square was empty (sliders may continue). */
-  const visit = (tx: number, ty: number) => {
-    if (grid[ty * w + tx] === 0) {
-      out.push({ u: i, kind: 'move', x: tx, y: ty });
-      return true;
-    }
-    enemyAt(tx, ty);
-    return false;
+  const quiet = (tx: number, ty: number) => {
+    if (inB(tx, ty) && grid[ty * w + tx] === 0) out.push({ u: i, kind: 'move', x: tx, y: ty, promo: promoAt(ty) });
   };
 
+  for (const [dx, dy] of prof.quiet) quiet(u.x + dx, u.y + dy);
+
   if (isPawn) {
-    const dir = u.side === 'P' ? -1 : 1;
     const ny = u.y + dir;
     if (ny < 0 || ny >= h) return out;
     if (grid[ny * w + u.x] === 0) {
-      out.push({ u: i, kind: 'move', x: u.x, y: ny, promo: ny === lastRow });
+      quiet(u.x, ny);
       const ny2 = ny + dir;
-      if (!u.moved && h >= 6 && ny2 >= 0 && ny2 < h && grid[ny2 * w + u.x] === 0)
-        out.push({ u: i, kind: 'move', x: u.x, y: ny2, promo: ny2 === lastRow });
+      if ((prof.pawnDouble || (!u.moved && h >= 6)) && inB(u.x, ny2)) quiet(u.x, ny2);
+    } else if (prof.pawnCapFwd) {
+      enemyAt(u.x, ny);
     }
-    for (const dx of [-1, 1]) {
-      const tx = u.x + dx;
-      if (tx >= 0 && tx < w) enemyAt(tx, ny);
-    }
+    for (const dx of [-1, 1]) if (inB(u.x + dx, ny)) enemyAt(u.x + dx, ny);
     return out;
   }
 
-  const def = PIECES[u.type];
-  for (const [dx, dy] of def.leaps) {
+  for (const [dx, dy] of prof.leaps) {
     const tx = u.x + dx, ty = u.y + dy;
-    if (tx >= 0 && ty >= 0 && tx < w && ty < h) visit(tx, ty);
+    if (!inB(tx, ty)) continue;
+    if (grid[ty * w + tx] === 0) out.push({ u: i, kind: 'move', x: tx, y: ty });
+    else enemyAt(tx, ty);
   }
-  for (const [dx, dy] of def.slides) {
-    let tx = u.x + dx, ty = u.y + dy;
-    while (tx >= 0 && ty >= 0 && tx < w && ty < h && visit(tx, ty)) {
+  for (const [dx, dy] of prof.slides) {
+    let tx = u.x + dx, ty = u.y + dy, hopped = false;
+    while (inB(tx, ty)) {
+      const c = grid[ty * w + tx];
+      if (c === 0) {
+        out.push({ u: i, kind: 'move', x: tx, y: ty });
+      } else {
+        enemyAt(tx, ty);
+        if (!prof.hop || hopped) break;
+        hopped = true;
+      }
       tx += dx;
       ty += dy;
     }
@@ -165,12 +184,20 @@ function genBossMoves(b: Battle, i: number, out: Move[]): Move[] {
 /* Applying moves                                                      */
 /* ------------------------------------------------------------------ */
 
-function kill(b: Battle, idx: number, fx?: FxEvent[]) {
+export function kill(b: Battle, idx: number, fx?: FxEvent[]) {
   const t = b.units[idx];
   if (!t.alive) return;
   t.alive = false;
   setFootprint(b, t, 0);
   fx?.push({ kind: 'capture', x: t.x, y: t.y, side: t.side, unitType: t.type, boss: t.boss, size: t.size });
+}
+
+/** Deals boss damage; kills it at 0 HP. */
+export function damage(b: Battle, idx: number, dmg: number, fx?: FxEvent[]) {
+  const t = b.units[idx];
+  t.hp = Math.max(0, (t.hp ?? 1) - dmg);
+  fx?.push({ kind: 'hit', x: t.x, y: t.y, amount: dmg, side: t.side, boss: t.boss, size: t.size });
+  if (t.hp <= 0) kill(b, idx, fx);
 }
 
 /** Returns a new battle with the move applied. Pass `fx` to collect visual events. */
@@ -188,14 +215,20 @@ export function applyInPlace(b: Battle, m: Move, fx?: FxEvent[]) {
     b.passes = 0;
     const u = b.units[m.u];
     const fx0 = u.x, fy0 = u.y;
+    const target = m.target !== undefined ? b.units[m.target] : null;
     if (m.kind === 'strike') {
-      const t = b.units[m.target!];
-      const dmg = bossDamage(u.type as PieceType);
-      t.hp = Math.max(0, (t.hp ?? 1) - dmg);
-      fx?.push({ kind: 'hit', x: t.x, y: t.y, amount: dmg, side: t.side, boss: t.boss, size: t.size });
-      if (t.hp <= 0) kill(b, m.target!, fx);
+      const dmg = bossDamage(u.type as PieceType) + profile(u.type as PieceType, u.rank ?? 0).bossDmg;
+      u.xp = (u.xp ?? 0) + dmg * 2;
+      damage(b, m.target!, dmg, fx);
+    } else if (target?.shield && m.kind === 'capture' && !m.crush) {
+      // Shield absorbs the capture: the attacker bounces back.
+      target.shield = false;
+      fx?.push({ kind: 'block', x: target.x, y: target.y, side: target.side, icon: '🛡️' });
     } else {
-      if (m.target !== undefined) kill(b, m.target, fx);
+      if (target) {
+        u.xp = (u.xp ?? 0) + unitValue(target);
+        kill(b, m.target!, fx);
+      }
       if (m.crush) for (const c of m.crush) kill(b, c, fx);
       setFootprint(b, u, 0);
       u.x = m.x;
@@ -203,16 +236,19 @@ export function applyInPlace(b: Battle, m: Move, fx?: FxEvent[]) {
       setFootprint(b, u, u.id + 1);
       if (m.promo && u.type === 'pawn') {
         u.promotedFrom = 'pawn';
-        u.type = 'queen';
+        u.type = profile('pawn', u.rank ?? 0).promoAmazon ? 'amazon' : 'queen';
         fx?.push({ kind: 'promote', x: u.x, y: u.y, side: u.side });
       }
     }
     u.moved = true;
-    b.lastMove = { fx: fx0, fy: fy0, tx: m.kind === 'strike' ? m.x : u.x, ty: m.kind === 'strike' ? m.y : u.y };
+    b.lastMove = { fx: fx0, fy: fy0, tx: m.kind === 'move' || m.kind === 'capture' ? u.x : m.x, ty: m.kind === 'move' || m.kind === 'capture' ? u.y : m.y };
   }
-  // Boss movement cooldowns tick on their side's turns.
   for (const bu of b.units) {
-    if (!bu.alive || bu.type !== 'boss' || bu.side !== side) continue;
+    if (!bu.alive || bu.side !== side) continue;
+    // Frozen pieces thaw on their own side's turns.
+    if ((bu.frozen ?? 0) > 0) bu.frozen = bu.frozen! - 1;
+    // Boss movement cooldowns tick on their side's turns.
+    if (bu.type !== 'boss') continue;
     if (bu.id === m.u && m.kind !== 'strike') bu.cd = BOSSES[bu.boss!].moveEvery - 1;
     else if ((bu.cd ?? 0) > 0) bu.cd = bu.cd! - 1;
   }
@@ -272,7 +308,7 @@ export function enemyPreTurn(b: Battle, fx: FxEvent[], rand = Math.random) {
     // Prefer squares toward the player.
     free.sort((a, c) => Math.floor(c / b.w) - Math.floor(a / b.w) || rand() - 0.5);
     const sq = free[0];
-    const nu = addUnit(b, { type: s.type, side: 'E', x: sq % b.w, y: Math.floor(sq / b.w), size: 1 });
+    const nu = addUnit(b, { type: s.type, side: 'E', x: sq % b.w, y: Math.floor(sq / b.w), size: 1, rank: b.enemyRank });
     fx.push({ kind: 'summon', x: nu.x, y: nu.y, side: 'E', unitType: nu.type });
   }
   checkOver(b);

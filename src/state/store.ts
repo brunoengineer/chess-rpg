@@ -28,6 +28,9 @@ interface AppStore {
   toasts: Toast[];
   settingsOpen: boolean;
   authError: string | null;
+  /** Worlds currently shown in Hard mode on the map. */
+  hardView: Record<number, boolean>;
+  toggleHard: (region: number) => void;
   setView: (v: View) => void;
   update: (fn: (s: SaveData) => void) => void;
   toast: (text: string, icon?: string) => void;
@@ -147,6 +150,8 @@ export const useStore = create<AppStore>((set, get) => {
     toasts: [],
     settingsOpen: false,
     authError: null,
+    hardView: {},
+    toggleHard: (region) => set({ hardView: { ...get().hardView, [region]: !get().hardView[region] } }),
 
     setView: (view) => set({ view }),
 

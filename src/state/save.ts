@@ -1,4 +1,6 @@
 import type { StageProgress } from '../game/campaign';
+import type { CardId } from '../game/cards';
+import { levelInfo } from '../game/ranks';
 import type { Battle, PieceType, Placement, StageDef } from '../game/types';
 
 export type Counts = Partial<Record<PieceType, number>>;
@@ -15,6 +17,16 @@ export interface ActiveBattle {
   battle: Battle;
   loot: number;
   captures: number;
+  /** Cards brought into this battle and not used yet. */
+  cards?: CardId[];
+  /** Snapshot before the player's last move (for Rewind). */
+  undo?: { battle: Battle; loot: number; captures: number } | null;
+  /** Bounty card: loot multiplier. */
+  lootMult?: number;
+  /** Insurance card: mercenaries come back on a loss. */
+  insured?: boolean;
+  /** Pre-battle cards consumed at the start (count toward the ★★ cap). */
+  preCards?: number;
 }
 
 export interface SaveData {
@@ -30,6 +42,12 @@ export interface SaveData {
   /** Last formation per stage id. */
   formations: Record<string, Placement[]>;
   stats: { battles: number; wins: number; losses: number; captures: number; coinsEarned: number; bossesSlain: number };
+  /** XP per piece class (levels and ranks). */
+  xp: Counts;
+  /** Card inventory. */
+  cards: Partial<Record<CardId, number>>;
+  cardSlots: number;
+  cosmetics: { owned: string[]; piece: string; board: string };
   settings: Settings;
   active: ActiveBattle | null;
   updatedAt: number;
@@ -46,6 +64,10 @@ export function defaultSave(): SaveData {
     arena: { level: 1, best: 0 },
     formations: {},
     stats: { battles: 0, wins: 0, losses: 0, captures: 0, coinsEarned: 0, bossesSlain: 0 },
+    xp: {},
+    cards: {},
+    cardSlots: 2,
+    cosmetics: { owned: [], piece: 'classic', board: 'realm' },
     settings: { showMoves: true, showEnemyMoves: true, sound: true, fastAnim: false },
     active: null,
     updatedAt: 0,
@@ -73,6 +95,10 @@ export function normalizeSave(raw: unknown): SaveData {
     mercs: s.mercs ?? {},
     stages,
     formations: s.formations ?? {},
+    xp: s.xp ?? {},
+    cards: s.cards ?? {},
+    cardSlots: s.cardSlots ?? d.cardSlots,
+    cosmetics: { ...d.cosmetics, ...s.cosmetics },
     active: s.active ?? null,
     v: 1,
   };
@@ -88,4 +114,14 @@ export function addCount(c: Counts, t: PieceType, n: number) {
 
 export function hasProgress(s: SaveData) {
   return s.stats.battles > 0 || s.updatedAt > 0;
+}
+
+/** Current rank (0–5) of every piece class, from its XP. */
+export function classRanks(xp: Counts): Partial<Record<PieceType, number>> {
+  const out: Partial<Record<PieceType, number>> = {};
+  for (const [t, v] of Object.entries(xp)) {
+    const r = levelInfo(v ?? 0).rank;
+    if (r) out[t as PieceType] = r;
+  }
+  return out;
 }

@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react';
 import { sfx } from '../audio';
 import { Board, type HintKind } from '../components/Board';
-import { PieceGlyph } from '../components/Piece';
+import { Insignia, PieceGlyph } from '../components/Piece';
 import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, REGIONS, isCleared } from '../game/campaign';
+import { CARDS, CARD_ORDER, type CardId } from '../game/cards';
 import { createBattle, genUnitMoves } from '../game/engine';
 import { PIECES, PIECE_ORDER } from '../game/pieces';
+import { RANKS, commandCost, levelInfo } from '../game/ranks';
 import type { PieceType, Placement, StageDef } from '../game/types';
 import { startBattle } from '../state/actions';
-import { count, type Counts } from '../state/save';
+import { classRanks, count, type Counts } from '../state/save';
 import { useStore } from '../state/store';
 import { enemyRoster } from './ArenaTab';
 
@@ -31,7 +33,9 @@ function deploySquares(stage: StageDef, occupied: Set<number>): number[][] {
   return rows;
 }
 
-function autoDeploy(stage: StageDef, army: Counts, mercs: Counts, leadership: number, blocked: Set<number>): Placement[] {
+type Cost = (t: PieceType) => number;
+
+function autoDeploy(stage: StageDef, army: Counts, mercs: Counts, leadership: number, blocked: Set<number>, cost: Cost): Placement[] {
   const pool: TrayItem[] = [];
   for (const t of PIECE_ORDER) {
     for (let i = 0; i < count(army, t); i++) pool.push({ type: t, temp: false });
@@ -42,15 +46,15 @@ function autoDeploy(stage: StageDef, army: Counts, mercs: Counts, leadership: nu
   let slots = rows.reduce((a, r) => a + r.length, 0);
   // Keep some leadership for a pawn shield in front of the officers.
   const pawns = pool.filter((it) => it.type === 'pawn');
-  const shield = Math.min(pawns.length, rows[0]?.length ?? 0, Math.floor(leadership * 0.35), slots);
-  let budget = leadership - shield;
+  const shield = Math.min(pawns.length, rows[0]?.length ?? 0, Math.floor((leadership * 0.35) / cost('pawn')), slots);
+  let budget = leadership - shield * cost('pawn');
   slots -= shield;
   const chosen: TrayItem[] = pawns.splice(0, shield);
   for (const it of [...pool.filter((it) => it.type !== 'pawn'), ...pawns]) {
     if (slots === 0) break;
-    if (PIECES[it.type].command <= budget) {
+    if (cost(it.type) <= budget) {
       chosen.push(it);
-      budget -= PIECES[it.type].command;
+      budget -= cost(it.type);
       slots--;
     }
   }
@@ -70,6 +74,9 @@ function autoDeploy(stage: StageDef, army: Counts, mercs: Counts, leadership: nu
 
 export function DeployScreen({ stage }: { stage: StageDef }) {
   const { save, setView } = useStore();
+  const ranks = useMemo(() => classRanks(save.xp), [save.xp]);
+  const levels = useMemo(() => Object.fromEntries(PIECE_ORDER.map((t) => [t, levelInfo(save.xp[t] ?? 0).level])), [save.xp]);
+  const cost: Cost = (t) => commandCost(t, ranks[t] ?? 0);
   const theme = stage.isArena ? ARENA_THEME : REGIONS[stage.region - 1];
   const base = useMemo(() => createBattle(stage, []), [stage]);
   const blocked = useMemo(() => new Set(base.grid.flatMap((c, i) => (c !== 0 ? [i] : []))), [base]);
@@ -81,21 +88,25 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     return pl.filter((p) => {
       const pool = p.temp ? save.mercs : save.army;
       const u = p.temp ? usedM : used;
-      if (!zone.has(p.y * stage.w + p.x) || count(u, p.type) >= count(pool, p.type) || cmd + PIECES[p.type].command > save.leadership) return false;
+      if (!zone.has(p.y * stage.w + p.x) || count(u, p.type) >= count(pool, p.type) || cmd + cost(p.type) > save.leadership) return false;
       u[p.type] = count(u, p.type) + 1;
-      cmd += PIECES[p.type].command;
+      cmd += cost(p.type);
       return true;
     });
   };
   const lastFormation = save.formations[stage.id];
   const [placements, setPlacements] = useState<Placement[]>(() =>
-    lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked),
+    lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost),
   );
+  const ownedCards = stage.extra ? [] : CARD_ORDER.filter((c) => (save.cards[c] ?? 0) > 0);
+  const [loadout, setLoadout] = useState<CardId[]>([]);
+  const toggleCard = (c: CardId) =>
+    setLoadout(loadout.includes(c) ? loadout.filter((x) => x !== c) : loadout.length < save.cardSlots ? [...loadout, c] : loadout);
   const [tray, setTray] = useState<TrayItem | null>(null);
   const [scout, setScout] = useState<number | null>(null);
 
-  const preview = useMemo(() => createBattle(stage, placements), [stage, placements]);
-  const used = placements.reduce((a, p) => a + PIECES[p.type].command, 0);
+  const preview = useMemo(() => createBattle(stage, placements, ranks), [stage, placements, ranks]);
+  const used = placements.reduce((a, p) => a + cost(p.type), 0);
   const remaining = (it: TrayItem) => count(it.temp ? save.mercs : save.army, it.type) - placements.filter((p) => p.type === it.type && p.temp === it.temp).length;
 
   const trayItems: TrayItem[] = [];
@@ -125,7 +136,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     setScout(null);
     if (!zone.has(i) || !tray) return;
     if (remaining(tray) <= 0) return;
-    if (used + PIECES[tray.type].command > save.leadership) {
+    if (used + cost(tray.type) > save.leadership) {
       useStore.getState().toast('Not enough leadership', '👑');
       return;
     }
@@ -149,7 +160,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
             <h2>{stage.name}</h2>
           </div>
         </div>
-        <Board battle={preview} theme={theme} deployZone={zone} hints={hints} hintTone="enemy" selected={scout} onCell={onCell} />
+        <Board battle={preview} theme={theme} deployZone={zone} hints={hints} hintTone="enemy" selected={scout} levels={levels} onCell={onCell} />
       </div>
 
       <aside className="side-col">
@@ -160,6 +171,13 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
             <span className="chip" title="Enemy skill">{'💀'.repeat(difficulty(stage))}</span>
             <span className="chip" title={firstClear ? 'Doubled on first win' : 'Reward'}>🪙 {stage.reward}{firstClear && <b className="bonus">×2</b>}</span>
             <span className="chip" title="Loot multiplier">💰 ×{stage.lootMult}</span>
+            {stage.hard && <span className="chip hard-chip">🔥 Hard</span>}
+            {(stage.enemyRank ?? 0) > 0 && (
+              <span className="chip" title="Enemy rank">
+                <Insignia rank={stage.enemyRank!} /> {RANKS[stage.enemyRank!]}
+              </span>
+            )}
+            {stage.extra && <span className="chip" title="No cards on bonus stages">🚫🃏</span>}
           </div>
           <div className="roster">
             {boss && <span className="roster-item">{boss.emoji} {boss.name}</span>}
@@ -182,7 +200,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
           )}
           {scoutUnit && scoutUnit.type !== 'boss' && (
             <div className="scout">
-              <PieceGlyph type={scoutUnit.type} side="E" className="big" />
+              <PieceGlyph type={scoutUnit.type} side="E" rank={scoutUnit.rank} className="big" />
               <b>{PIECES[scoutUnit.type].name}</b>
             </div>
           )}
@@ -206,21 +224,32 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
                   className={`tray-item ${active ? 'active' : ''}`}
                   disabled={left <= 0}
                   onClick={() => { setTray(active ? null : it); sfx.select(); }}
-                  title={`${PIECES[it.type].name}${it.temp ? ' (mercenary)' : ''} — command ${PIECES[it.type].command}`}
+                  title={`${PIECES[it.type].name}${it.temp ? ' (mercenary)' : ''}`}
                 >
-                  <PieceGlyph type={it.type} temp={it.temp} />
+                  <PieceGlyph type={it.type} temp={it.temp} rank={ranks[it.type]} />
                   <span className="tray-count">×{left}</span>
-                  <span className="tray-cmd">👑{PIECES[it.type].command}</span>
+                  <span className="tray-cmd">👑{cost(it.type)}</span>
                 </button>
               );
             })}
           </div>
           <div className="deploy-actions">
-            <button className="btn btn-ghost btn-small" onClick={() => setPlacements(autoDeploy(stage, save.army, save.mercs, save.leadership, blocked))}>✨ Auto</button>
+            <button className="btn btn-ghost btn-small" onClick={() => setPlacements(autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost))}>✨ Auto</button>
             {lastFormation && <button className="btn btn-ghost btn-small" onClick={() => setPlacements(fits(lastFormation))}>↺ Last</button>}
             <button className="btn btn-ghost btn-small" onClick={() => setPlacements([])}>Clear</button>
           </div>
-          <button className="btn btn-primary btn-lg start-btn" disabled={!placements.length || !!save.active} onClick={() => startBattle(stage, placements)}>
+          {ownedCards.length > 0 && (
+            <div className="loadout">
+              <span className="loadout-label" title="Cards for this battle">🃏 {loadout.length}/{save.cardSlots}</span>
+              {ownedCards.map((c) => (
+                <button key={c} className={`loadout-card ${loadout.includes(c) ? 'active' : ''}`} onClick={() => toggleCard(c)} title={`${CARDS[c].name}: ${CARDS[c].desc}`}>
+                  {CARDS[c].icon}
+                  <small>×{save.cards[c]}</small>
+                </button>
+              ))}
+            </div>
+          )}
+          <button className="btn btn-primary btn-lg start-btn" disabled={!placements.length || !!save.active} onClick={() => startBattle(stage, placements, loadout)}>
             ⚔️ Fight
           </button>
         </section>

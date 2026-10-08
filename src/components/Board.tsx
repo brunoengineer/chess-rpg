@@ -27,10 +27,14 @@ interface BoardProps {
   fx?: FxItem[];
   shake?: boolean;
   dimmed?: boolean;
+  /** Player class levels, shown on pieces. */
+  levels?: Partial<Record<PieceType, number>>;
+  /** Squares a card can target right now. */
+  targets?: Set<number>;
   onCell?: (x: number, y: number) => void;
 }
 
-export function Board({ battle, theme, selected, hints, hintTone = 'player', deployZone, fx = [], shake, dimmed, onCell }: BoardProps) {
+export function Board({ battle, theme, selected, hints, hintTone = 'player', deployZone, fx = [], shake, dimmed, levels, targets, onCell }: BoardProps) {
   const { w, h, grid, units, lastMove, telegraph } = battle;
   const pct = (n: number, of: number) => `${(n / of) * 100}%`;
   const tele = new Set(telegraph?.squares ?? []);
@@ -59,6 +63,7 @@ export function Board({ battle, theme, selected, hints, hintTone = 'player', dep
             isLast && 'last',
             tele.has(i) && `tele tele-${telegraph!.kind}`,
             hint && `hint hint-${hint} tone-${hintTone}`,
+            targets?.has(i) && 'card-target',
           ].filter(Boolean).join(' ');
           return (
             <div key={i} className={cls} onClick={() => onCell?.(x, y)}>
@@ -76,9 +81,18 @@ export function Board({ battle, theme, selected, hints, hintTone = 'player', dep
               style={{ left: pct(u.x, w), top: pct(u.y, h), width: pct(u.size, w), height: pct(u.size, h) }}
             >
               {u.type === 'boss' ? (
-                <BossToken kind={u.boss!} hp={u.hp ?? 0} maxHp={u.maxHp ?? 1} />
+                <BossToken kind={u.boss!} hp={u.hp ?? 0} maxHp={u.maxHp ?? 1} cd={u.cd} />
               ) : (
-                <PieceGlyph type={u.type as PieceType} side={u.side} temp={u.temp} promoted={!!u.promotedFrom} />
+                <PieceGlyph
+                  type={u.type as PieceType}
+                  side={u.side}
+                  temp={u.temp}
+                  promoted={!!u.promotedFrom}
+                  rank={u.rank}
+                  level={u.side === 'P' ? levels?.[(u.promotedFrom ?? u.type) as PieceType] : undefined}
+                  shield={u.shield}
+                  frozen={(u.frozen ?? 0) > 0}
+                />
               )}
             </div>
           ),

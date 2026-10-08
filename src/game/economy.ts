@@ -2,7 +2,7 @@ import { PIECES } from './pieces';
 import type { Battle, FxEvent, Outcome, PieceType, StageDef } from './types';
 
 /** Coins earned for battle events caused by the player (captures, boss hits, promotions). */
-export function lootFromFx(fx: FxEvent[], stage: StageDef): { coins: number; captures: number } {
+export function lootFromFx(fx: FxEvent[], stage: StageDef, mult = 1): { coins: number; captures: number } {
   let coins = 0, captures = 0;
   for (const e of fx) {
     if (e.kind === 'capture' && e.side === 'E') {
@@ -14,22 +14,45 @@ export function lootFromFx(fx: FxEvent[], stage: StageDef): { coins: number; cap
       coins += 5 * stage.lootMult;
     }
   }
-  return { coins, captures };
+  return { coins: coins * mult, captures };
 }
 
 export interface BattleResult {
   outcome: Outcome;
   win: boolean;
   stars: number;
+  /** Stars were capped because cards were used. */
+  cardCapped: boolean;
   loot: number;
   reward: number;
   firstClearBonus: number;
   total: number;
   lost: { type: PieceType; temp: boolean }[];
   survivors: { type: PieceType; temp: boolean }[];
+  /** XP earned per piece class. */
+  xp: Partial<Record<PieceType, number>>;
 }
 
-export function computeResult(b: Battle, outcome: Outcome, stage: StageDef, loot: number, alreadyCleared: boolean): BattleResult {
+/** Class XP: captures and boss hits (tracked on units), +2 for surviving, +3 each on a win; scaled by the stage. */
+export function battleXp(b: Battle, stage: StageDef, win: boolean): Partial<Record<PieceType, number>> {
+  const out: Partial<Record<PieceType, number>> = {};
+  for (const u of b.units) {
+    if (u.side !== 'P' || u.type === 'boss') continue;
+    const cls = (u.promotedFrom ?? u.type) as PieceType;
+    const xp = ((u.xp ?? 0) * 3 + (u.alive ? 2 : 0) + (win ? 3 : 0)) * stage.lootMult;
+    out[cls] = (out[cls] ?? 0) + xp;
+  }
+  return out;
+}
+
+export function computeResult(
+  b: Battle,
+  outcome: Outcome,
+  stage: StageDef,
+  loot: number,
+  alreadyCleared: boolean,
+  cardsUsed = 0,
+): BattleResult {
   const lost: BattleResult['lost'] = [];
   const survivors: BattleResult['survivors'] = [];
   for (const u of b.units) {
@@ -40,9 +63,14 @@ export function computeResult(b: Battle, outcome: Outcome, stage: StageDef, loot
   const win = outcome.winner === 'P';
   let stars = 0;
   if (win) stars = outcome.reason === 'points' || outcome.reason === 'time' || outcome.reason === 'deadlock' ? 1 : lost.length === 0 ? 3 : lost.length <= 1 ? 2 : 1;
+  const cardCapped = cardsUsed > 0 && stars > 2;
+  if (cardsUsed > 0) stars = Math.min(stars, 2);
   const reward = win ? stage.reward : 0;
   const firstClearBonus = win && !alreadyCleared && !stage.isArena ? stage.reward : 0;
-  return { outcome, win, stars, loot, reward, firstClearBonus, total: loot + reward + firstClearBonus, lost, survivors };
+  return {
+    outcome, win, stars, cardCapped, loot, reward, firstClearBonus, total: loot + reward + firstClearBonus, lost, survivors,
+    xp: battleXp(b, stage, win),
+  };
 }
 
 /** Price to raise leadership from `level` to `level + 1`. */
@@ -50,4 +78,4 @@ export const leadershipCost = (level: number) => {
   const k = level - 6;
   return Math.round((15 + 8 * k + 0.4 * k * k) / 5) * 5;
 };
-export const MAX_LEADERSHIP = 40;
+export const MAX_LEADERSHIP = 50;

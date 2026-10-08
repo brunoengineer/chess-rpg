@@ -12,6 +12,7 @@ export function App() {
   const phase = useStore((s) => s.phase);
   const view = useStore((s) => s.view);
   const settingsOpen = useStore((s) => s.settingsOpen);
+  const cosmetics = useStore((s) => s.save.cosmetics);
 
   if (phase === 'boot') {
     return (
@@ -23,7 +24,7 @@ export function App() {
   if (phase !== 'game') return <LoginScreen />;
 
   return (
-    <div className="app">
+    <div className="app" data-skin={cosmetics.piece} data-board={cosmetics.board}>
       <TopBar />
       <main className={`main view-${view.name}`}>
         {view.name === 'hub' && view.tab === 'campaign' && <CampaignTab />}

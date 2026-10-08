@@ -13,7 +13,7 @@ function evaluate(b: Battle, side: Side): number {
   const cx = (b.w - 1) / 2, cy = (b.h - 1) / 2;
   for (const u of b.units) {
     if (!u.alive) continue;
-    let v = unitValue(u) * 100;
+    let v = unitValue(u) * 100 + (u.rank ?? 0) * 12 + (u.shield ? 60 : 0) - (u.frozen ? 40 : 0);
     if (u.type === 'pawn') {
       const adv = u.side === 'P' ? b.h - 1 - u.y : u.y;
       v += adv * adv * 4;

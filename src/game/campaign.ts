@@ -134,6 +134,10 @@ const WORLDS: Record<number, Spec[]> = {
   ],
 };
 
+/** World 1 Recruits → World 5 Colonels; bonus stages fight at rank = world number. */
+const enemyRankFor = (region: number, i: number, extra?: number) =>
+  extra ? Math.min(5, region) : Math.max(0, region - 2 + (i >= 5 ? 1 : 0));
+
 function buildWorld(region: number, specs: Spec[]): StageDef[] {
   const econ = WORLD_ECON[region];
   const [base, step, bossReward, x1, x2] = econ.reward;
@@ -157,6 +161,8 @@ function buildWorld(region: number, specs: Spec[]): StageDef[] {
       maxTurns: TURNS[size] + (region === 5 ? 10 : 0) + (isBoss || extra ? 10 : 0),
       isBoss,
       extra,
+      // Enemies gain ranks as the campaign goes on (bonus stages one rank higher).
+      enemyRank: enemyRankFor(region, i, extra),
     };
   });
 }
@@ -179,18 +185,50 @@ export function mainStars(p: StageProgress, region: number): number {
 
 export const extraStarsNeeded = (extra: 1 | 2) => (extra === 1 ? EXTRA1_STARS : EXTRA2_STARS);
 
+/* ---------------- Hard mode ---------------- */
+
+/** Hard mode opens for a world once its boss is beaten. */
+export const BOSS_OF = (region: number) => `${region}-${MAIN_STAGES}`;
+export const isHardOpen = (p: StageProgress, region: number) => isCleared(p, BOSS_OF(region));
+
+/** Hard variant of a main stage: enemies +2 ranks, sharper AI, double reward and loot. */
+export function hardStage(stage: StageDef): StageDef {
+  return {
+    ...stage,
+    id: `${stage.id}H`,
+    hard: true,
+    enemyRank: Math.min(5, (stage.enemyRank ?? 0) + 2),
+    ai: { ...stage.ai, depth: Math.max(2, stage.ai.depth), blunder: stage.ai.blunder / 2, noise: Math.max(5, stage.ai.noise / 2), quiesce: true },
+    reward: stage.reward * 2,
+    lootMult: stage.lootMult * 2,
+  };
+}
+
+export const baseId = (id: string) => id.replace(/H$/, '');
+
+/** Stars earned in a world's 10 hard stages. */
+export function hardStars(p: StageProgress, region: number): number {
+  return MAIN.filter((s) => s.region === region).reduce((a, s) => a + (p[`${s.id}H`]?.stars ?? 0), 0);
+}
+
 export function isStageUnlocked(p: StageProgress, stage: StageDef): boolean {
   if (stage.extra) return mainStars(p, stage.region) >= extraStarsNeeded(stage.extra);
-  const i = MAIN.findIndex((s) => s.id === stage.id);
+  const i = MAIN.findIndex((s) => s.id === baseId(stage.id));
+  if (stage.hard) {
+    if (!isHardOpen(p, stage.region)) return false;
+    const prev = MAIN[i - 1];
+    return !prev || prev.region !== stage.region || isCleared(p, `${prev.id}H`);
+  }
   return i <= 0 || isCleared(p, MAIN[i - 1].id);
 }
 
-/** The stage after this one in the same world, if any. */
+/** The stage after this one in the same world (and same mode), if any. */
 export function nextStage(stage: StageDef): StageDef | undefined {
   if (stage.extra || stage.isArena) return undefined;
-  const i = MAIN.findIndex((s) => s.id === stage.id);
+  const i = MAIN.findIndex((s) => s.id === baseId(stage.id));
   const next = MAIN[i + 1];
-  return next?.region === stage.region ? next : undefined;
+  if (next?.region !== stage.region) return undefined;
+  return stage.hard ? hardStage(next) : next;
 }
 
 export function isPieceUnlocked(p: StageProgress, type: PieceType): boolean {
@@ -269,5 +307,6 @@ export function arenaStage(level: number): StageDef {
     w: size, h: size, deployRows: size >= 8 ? 3 : 2, layout, boss,
     ai: ai(level < 2 ? 1 : level < 6 ? 2 : 3, 0.25 - level * 0.03, 60 - level * 6, level >= 8),
     reward: 40 + level * 20, lootMult: 1 + Math.floor(level / 3), maxTurns: 40 + size * 2,
+    enemyRank: Math.min(5, Math.floor(level / 5)),
   };
 }

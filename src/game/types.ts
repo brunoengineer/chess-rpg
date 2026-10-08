@@ -35,6 +35,14 @@ export interface Unit {
   maxHp?: number;
   /** Boss movement cooldown in own turns. */
   cd?: number;
+  /** Rank 0 (Recruit) … 5 (General): unlocks class perks. */
+  rank?: number;
+  /** Battle XP earned by this unit (captures, boss hits). */
+  xp?: number;
+  /** Blocks the next capture against this unit. */
+  shield?: boolean;
+  /** Can't move for this many of its own turns. */
+  frozen?: number;
 }
 
 export type MoveKind = 'move' | 'capture' | 'strike' | 'pass';
@@ -82,9 +90,19 @@ export interface Battle {
   lastMove: { fx: number; fy: number; tx: number; ty: number } | null;
   /** Set once the enemy's start-of-turn effects ran, so a reload doesn't replay them. */
   enemyPreDone?: boolean;
+  /** Rank given to enemy units (including summons). */
+  enemyRank?: number;
+  /** Number of cards the player used this battle. */
+  cardsUsed?: number;
+  /** Ply on which the player last used a card (one card per turn). */
+  cardPly?: number;
+  /** Player gets one more non-capturing move this turn (Double Move card). */
+  bonusMove?: boolean;
+  /** The current player move is the Double Move bonus: no captures. */
+  quietOnly?: boolean;
 }
 
-export type FxKind = 'capture' | 'hit' | 'promote' | 'summon' | 'quake' | 'breath';
+export type FxKind = 'capture' | 'hit' | 'promote' | 'summon' | 'quake' | 'breath' | 'block';
 
 /** Visual/audio events produced while applying moves. */
 export interface FxEvent {
@@ -96,6 +114,8 @@ export interface FxEvent {
   boss?: BossKind;
   amount?: number;
   size?: number;
+  /** Icon for status effects (shield, freeze, stun). */
+  icon?: string;
 }
 
 export interface Placement {
@@ -130,6 +150,10 @@ export interface StageDef {
   maxTurns: number;
   isBoss?: boolean;
   isArena?: boolean;
+  /** Hard-mode replay of a cleared world: stronger enemies, double rewards. */
+  hard?: boolean;
+  /** Rank of every enemy piece (0–5). */
+  enemyRank?: number;
   /** Bonus stage unlocked by stars (1 = almost all stars, 2 = all stars). */
   extra?: 1 | 2;
 }
