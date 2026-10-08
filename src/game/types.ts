@@ -118,7 +118,6 @@ export interface StageDef {
   id: string;
   region: number;
   name: string;
-  flavor: string;
   w: number;
   h: number;
   deployRows: number;
@@ -131,4 +130,6 @@ export interface StageDef {
   maxTurns: number;
   isBoss?: boolean;
   isArena?: boolean;
+  /** Bonus stage unlocked by stars (1 = almost all stars, 2 = all stars). */
+  extra?: 1 | 2;
 }

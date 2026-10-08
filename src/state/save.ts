@@ -25,8 +25,6 @@ export interface SaveData {
   army: Counts;
   /** One-battle mercenaries. */
   mercs: Counts;
-  /** Fallen permanent pieces that can be revived. */
-  fallen: Counts;
   stages: StageProgress;
   arena: { level: number; best: number };
   /** Last formation per stage id. */
@@ -44,7 +42,6 @@ export function defaultSave(): SaveData {
     leadership: 6,
     army: { pawn: 5 },
     mercs: {},
-    fallen: {},
     stages: {},
     arena: { level: 1, best: 0 },
     formations: {},
@@ -59,17 +56,22 @@ export function defaultSave(): SaveData {
 export function normalizeSave(raw: unknown): SaveData {
   const d = defaultSave();
   if (!raw || typeof raw !== 'object') return d;
-  const s = raw as Partial<SaveData>;
+  const s = raw as Partial<SaveData> & { fallen?: Counts };
+  // v0.1 had a graveyard: owned pieces never die now, so bring the fallen home.
+  const army: Counts = { ...(s.army ?? d.army) };
+  for (const [t, n] of Object.entries(s.fallen ?? {})) addCount(army, t as PieceType, n ?? 0);
+  // v0.1 bosses were stage 'N-B'; they are stage 'N-10' now.
+  const stages = Object.fromEntries(Object.entries(s.stages ?? {}).map(([id, p]) => [id.replace(/-B$/, '-10'), p]));
+  const { fallen: _fallen, ...rest } = s;
   return {
     ...d,
-    ...s,
+    ...rest,
     arena: { ...d.arena, ...s.arena },
     stats: { ...d.stats, ...s.stats },
     settings: { ...d.settings, ...s.settings },
-    army: s.army ?? d.army,
+    army,
     mercs: s.mercs ?? {},
-    fallen: s.fallen ?? {},
-    stages: s.stages ?? {},
+    stages,
     formations: s.formations ?? {},
     active: s.active ?? null,
     v: 1,

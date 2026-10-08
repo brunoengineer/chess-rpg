@@ -18,8 +18,7 @@ export function ArenaTab() {
       <div className="arena panel locked-panel">
         <div className="big-icon">🏟️</div>
         <h2>The Endless Arena</h2>
-        <p>The gates open once you defeat <b>{STAGE_BY_ID[ARENA_UNLOCK].name}</b>.</p>
-        <p className="muted">An endless ladder of generated battles with growing rewards — and a champion beast every 5 levels.</p>
+        <p>🔒 Defeat <b>{STAGE_BY_ID[ARENA_UNLOCK].name}</b></p>
       </div>
     );
   }
@@ -33,7 +32,6 @@ export function ArenaTab() {
         </div>
         <div>
           <h2>{stage.name}</h2>
-          <p>{stage.flavor}</p>
           <div className="chips">
             <span className="chip">📐 {stage.w}×{stage.h}</span>
             <span className="chip">🪙 {stage.reward} + loot ×{stage.lootMult}</span>

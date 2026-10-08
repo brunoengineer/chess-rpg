@@ -7,7 +7,7 @@ import { ARENA_THEME, REGIONS, isCleared } from '../game/campaign';
 import { createBattle, genUnitMoves } from '../game/engine';
 import { PIECES, PIECE_ORDER } from '../game/pieces';
 import type { PieceType, Placement, StageDef } from '../game/types';
-import { callMilitia, startBattle } from '../state/actions';
+import { startBattle } from '../state/actions';
 import { count, type Counts } from '../state/save';
 import { useStore } from '../state/store';
 import { enemyRoster } from './ArenaTab';
@@ -103,7 +103,6 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     if (count(save.army, t)) trayItems.push({ type: t, temp: false });
     if (count(save.mercs, t)) trayItems.push({ type: t, temp: true });
   }
-  const nothingOwned = trayItems.length === 0;
 
   const hints = new Map<number, HintKind>();
   if (scout !== null && save.settings.showEnemyMoves) {
@@ -127,7 +126,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     if (!zone.has(i) || !tray) return;
     if (remaining(tray) <= 0) return;
     if (used + PIECES[tray.type].command > save.leadership) {
-      useStore.getState().toast('Not enough leadership — upgrade it in the Shop', '👑');
+      useStore.getState().toast('Not enough leadership', '👑');
       return;
     }
     setPlacements([...placements, { ...tray, x, y }]);
@@ -151,20 +150,16 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
           </div>
         </div>
         <Board battle={preview} theme={theme} deployZone={zone} hints={hints} hintTone="enemy" selected={scout} onCell={onCell} />
-        <p className="board-help">
-          {tray ? <>Tap a glowing square to place your <b>{PIECES[tray.type].name}</b>.</> : 'Pick a piece below, then tap a glowing square. Tap a placed piece to remove it. Tap enemies to scout them.'}
-        </p>
       </div>
 
       <aside className="side-col">
         <section className="panel briefing">
-          <p className="flavor">“{stage.flavor}”</p>
           <div className="chips">
             <span className="chip">📐 {stage.w}×{stage.h}</span>
             <span className="chip">⏱ {stage.maxTurns} turns</span>
             <span className="chip" title="Enemy skill">{'💀'.repeat(difficulty(stage))}</span>
-            <span className="chip">🪙 {stage.reward}{firstClear && <b className="bonus"> ×2 first win</b>}</span>
-            <span className="chip" title="Coins per captured piece value">💰 Loot ×{stage.lootMult}</span>
+            <span className="chip" title={firstClear ? 'Doubled on first win' : 'Reward'}>🪙 {stage.reward}{firstClear && <b className="bonus">×2</b>}</span>
+            <span className="chip" title="Loot multiplier">💰 ×{stage.lootMult}</span>
           </div>
           <div className="roster">
             {boss && <span className="roster-item">{boss.emoji} {boss.name}</span>}
@@ -180,27 +175,22 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
                 <span className="boss-brief-emoji">{boss.emoji}</span>
                 <div>
                   <b>{boss.name}</b>
-                  <small>{boss.title} · ❤️ {stage.boss!.hp ?? boss.hp} HP</small>
+                  <small>❤️ {stage.boss!.hp ?? boss.hp} · {boss.moveText}</small>
                 </div>
               </div>
-              <p>{boss.moveText}</p>
-              <p className="muted small">Attack any of its squares to deal damage — your piece stays put. Light pieces deal 1, heavy pieces (Rook+) deal 2, the Amazon 3. Defeat it before the turn limit!</p>
             </div>
           )}
           {scoutUnit && scoutUnit.type !== 'boss' && (
             <div className="scout">
               <PieceGlyph type={scoutUnit.type} side="E" className="big" />
-              <div>
-                <b>Enemy {PIECES[scoutUnit.type].name}</b>
-                <small>{PIECES[scoutUnit.type].desc}</small>
-              </div>
+              <b>{PIECES[scoutUnit.type].name}</b>
             </div>
           )}
         </section>
 
         <section className="panel tray-panel">
           <div className="command">
-            <span>👑 Command</span>
+            <span title="Command points">👑</span>
             <div className="command-bar">
               <i style={{ width: `${Math.min(100, (used / save.leadership) * 100)}%` }} />
             </div>
@@ -224,22 +214,15 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
                 </button>
               );
             })}
-            {nothingOwned && (
-              <div className="empty-tray">
-                <p>Your barracks are empty!</p>
-                <button className="btn btn-small" onClick={callMilitia}>🛡️ Call the village militia (free)</button>
-              </div>
-            )}
           </div>
           <div className="deploy-actions">
             <button className="btn btn-ghost btn-small" onClick={() => setPlacements(autoDeploy(stage, save.army, save.mercs, save.leadership, blocked))}>✨ Auto</button>
-            {lastFormation && <button className="btn btn-ghost btn-small" onClick={() => setPlacements(fits(lastFormation))}>↺ Last formation</button>}
+            {lastFormation && <button className="btn btn-ghost btn-small" onClick={() => setPlacements(fits(lastFormation))}>↺ Last</button>}
             <button className="btn btn-ghost btn-small" onClick={() => setPlacements([])}>Clear</button>
           </div>
           <button className="btn btn-primary btn-lg start-btn" disabled={!placements.length || !!save.active} onClick={() => startBattle(stage, placements)}>
-            ⚔️ Start Battle
+            ⚔️ Fight
           </button>
-          {save.active && <p className="error small">Finish your battle in progress first.</p>}
         </section>
       </aside>
     </div>

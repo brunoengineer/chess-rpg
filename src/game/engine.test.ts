@@ -6,7 +6,7 @@ import { LETTERS } from './pieces';
 import type { Battle, FxEvent, Placement, StageDef } from './types';
 
 const stage = (over: Partial<StageDef>): StageDef => ({
-  id: 't', region: 1, name: 't', flavor: '', w: 5, h: 5, deployRows: 1, layout: [],
+  id: 't', region: 1, name: 't', w: 5, h: 5, deployRows: 1, layout: [],
   ai: { depth: 2, blunder: 0, noise: 0 }, reward: 10, lootMult: 1, maxTurns: 30, ...over,
 });
 

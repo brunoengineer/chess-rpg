@@ -103,13 +103,10 @@ export function Toasts() {
   );
 }
 
-function Toggle({ label, hint, value, onChange }: { label: string; hint: string; value: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="toggle-row">
-      <span>
-        <strong>{label}</strong>
-        <small>{hint}</small>
-      </span>
+      <span>{label}</span>
       <input type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} />
       <span className="switch" />
     </label>
@@ -128,38 +125,38 @@ export function SettingsModal() {
         {player?.photo && <img src={player.photo} alt="" referrerPolicy="no-referrer" />}
         <div>
           <strong>{player?.name}</strong>
-          <small>{player?.guest ? 'Guest — progress is saved on this device only' : 'Signed in with Google — progress synced to the cloud'}</small>
+          <small>{player?.guest ? '💾 This device only' : '☁️ Cloud save'}</small>
         </div>
       </div>
       {player?.guest && firebaseEnabled && (
         <button className="btn btn-google" onClick={() => void signIn()}>
-          <GoogleIcon /> Sign in to save in the cloud
+          <GoogleIcon /> Sign in with Google
         </button>
       )}
       {authError && <p className="error">{authError}</p>}
 
       <div className="toggles">
-        <Toggle label="Show possible moves" hint="Highlight where the selected piece can go" value={save.settings.showMoves} onChange={set('showMoves')} />
-        <Toggle label="Scout enemy moves" hint="Tap an enemy piece to see where it can go" value={save.settings.showEnemyMoves} onChange={set('showEnemyMoves')} />
-        <Toggle label="Sound effects" hint="Synthesized blips and booms" value={save.settings.sound} onChange={set('sound')} />
-        <Toggle label="Fast animations" hint="Snappier enemy turns" value={save.settings.fastAnim} onChange={set('fastAnim')} />
+        <Toggle label="Move hints" value={save.settings.showMoves} onChange={set('showMoves')} />
+        <Toggle label="Enemy move hints" value={save.settings.showEnemyMoves} onChange={set('showEnemyMoves')} />
+        <Toggle label="Sound" value={save.settings.sound} onChange={set('sound')} />
+        <Toggle label="Fast animations" value={save.settings.fastAnim} onChange={set('fastAnim')} />
       </div>
 
       <div className="stats-grid">
         <div><b>{st.battles}</b><small>Battles</small></div>
         <div><b>{st.wins}</b><small>Victories</small></div>
         <div><b>{st.captures}</b><small>Captures</small></div>
-        <div><b>{st.bossesSlain}</b><small>Bosses slain</small></div>
-        <div><b>{st.coinsEarned.toLocaleString()}</b><small>Coins earned</small></div>
+        <div><b>{st.bossesSlain}</b><small>Bosses</small></div>
+        <div><b>{st.coinsEarned.toLocaleString()}</b><small>Coins</small></div>
       </div>
 
       <div className="settings-actions">
         {!confirmReset ? (
-          <button className="btn btn-ghost danger" onClick={() => setConfirmReset(true)}>Reset progress</button>
+          <button className="btn btn-ghost danger" onClick={() => setConfirmReset(true)}>Reset</button>
         ) : (
-          <button className="btn btn-danger" onClick={resetProgress}>Really erase everything?</button>
+          <button className="btn btn-danger" onClick={resetProgress}>Erase all?</button>
         )}
-        <button className="btn btn-ghost" onClick={() => void signOut()}>{player?.guest ? 'Back to title' : 'Sign out'}</button>
+        <button className="btn btn-ghost" onClick={() => void signOut()}>{player?.guest ? 'Exit' : 'Sign out'}</button>
       </div>
     </Modal>
   );

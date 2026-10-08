@@ -30,22 +30,17 @@ export function LoginScreen() {
       <div className="login-card panel">
         <div className="login-crest">♞&#xFE0E;</div>
         <h1 className="title">Gambit Quest</h1>
-        <p className="tagline">Start with a handful of pawns. Raise an army. Topple the Dragon Queen.</p>
-        <ul className="login-features">
-          <li>⚔️ Battle across 5 realms and 25 stages</li>
-          <li>🪙 Earn coins, recruit knights, bishops, queens… and stranger things</li>
-          <li>🐉 Face giant bosses that crush, summon and breathe fire</li>
-        </ul>
+        <p className="tagline">From pawns to queens.</p>
         {phase === 'loading' ? (
-          <p className="muted">Loading your army…</p>
+          <p className="muted">Loading…</p>
         ) : (
           <>
             <button className="btn btn-google btn-lg" onClick={() => void signIn()} disabled={!firebaseEnabled}>
               <GoogleIcon /> Sign in with Google
             </button>
-            {!firebaseEnabled && <p className="muted small">Google sign-in isn't configured on this build yet.</p>}
+            {!firebaseEnabled && <p className="muted small">Google sign-in not configured yet.</p>}
             <button className="btn btn-ghost" onClick={playAsGuest}>
-              Play as guest <small>(saved on this device only)</small>
+              Play as guest
             </button>
           </>
         )}

@@ -1,11 +1,10 @@
 import { BOSS_ORDER, BOSSES } from './bosses';
 import { PIECES, PIECE_ORDER } from './pieces';
-import type { PieceType, StageDef } from './types';
+import type { AiParams, BossKind, PieceType, StageDef } from './types';
 
 export interface RegionDef {
   id: number;
   name: string;
-  subtitle: string;
   icon: string;
   light: string;
   dark: string;
@@ -14,97 +13,184 @@ export interface RegionDef {
 }
 
 export const REGIONS: RegionDef[] = [
-  { id: 1, name: 'Pawn Meadows', subtitle: 'Where every legend begins', icon: '🌾', light: '#efe8c9', dark: '#86a75f', accent: '#b6d77a', bg: 'linear-gradient(135deg,#2f4a24,#1b2b17)' },
-  { id: 2, name: 'Whispering Woods', subtitle: 'Riders in the dark', icon: '🌲', light: '#e3d9b8', dark: '#4f7552', accent: '#7fc48a', bg: 'linear-gradient(135deg,#183326,#0d1d16)' },
-  { id: 3, name: 'Cathedral of Ash', subtitle: 'Bishops that never sleep', icon: '⛪', light: '#ddd5ea', dark: '#6e5a92', accent: '#c59bff', bg: 'linear-gradient(135deg,#2c2142,#171127)' },
-  { id: 4, name: 'Stone Bastion', subtitle: 'Walls of rooks and iron', icon: '🏯', light: '#d9d6cf', dark: '#6b6f7c', accent: '#d9b37a', bg: 'linear-gradient(135deg,#2b2d35,#17181d)' },
-  { id: 5, name: 'Obsidian Throne', subtitle: 'The Dragon Queen awaits', icon: '🐉', light: '#f0d7a8', dark: '#8a3434', accent: '#ff7a59', bg: 'linear-gradient(135deg,#3d1414,#1c0909)' },
+  { id: 1, name: 'Pawn Meadows', icon: '🌾', light: '#efe8c9', dark: '#86a75f', accent: '#b6d77a', bg: 'linear-gradient(135deg,#2f4a24,#1b2b17)' },
+  { id: 2, name: 'Whispering Woods', icon: '🌲', light: '#e3d9b8', dark: '#4f7552', accent: '#7fc48a', bg: 'linear-gradient(135deg,#183326,#0d1d16)' },
+  { id: 3, name: 'Cathedral of Ash', icon: '⛪', light: '#ddd5ea', dark: '#6e5a92', accent: '#c59bff', bg: 'linear-gradient(135deg,#2c2142,#171127)' },
+  { id: 4, name: 'Stone Bastion', icon: '🏯', light: '#d9d6cf', dark: '#6b6f7c', accent: '#d9b37a', bg: 'linear-gradient(135deg,#2b2d35,#17181d)' },
+  { id: 5, name: 'Obsidian Throne', icon: '🐉', light: '#f0d7a8', dark: '#8a3434', accent: '#ff7a59', bg: 'linear-gradient(135deg,#3d1414,#1c0909)' },
 ];
 
 export const ARENA_THEME: RegionDef = {
-  id: 0, name: 'The Endless Arena', subtitle: 'Glory without end', icon: '🏟️', light: '#ead9bd', dark: '#9a6a43', accent: '#ffcf6b', bg: 'linear-gradient(135deg,#3a2614,#1d130a)',
+  id: 0, name: 'The Endless Arena', icon: '🏟️', light: '#ead9bd', dark: '#9a6a43', accent: '#ffcf6b', bg: 'linear-gradient(135deg,#3a2614,#1d130a)',
 };
 
-const ai = (depth: number, blunder: number, noise = 30, quiesce = false) => ({ depth, blunder, noise, quiesce });
+/** Main stages per world (the last one is the boss). */
+export const MAIN_STAGES = 10;
+/** Stars (out of 30) needed for the first bonus stage; the second needs all 30. */
+export const EXTRA1_STARS = 27;
+export const EXTRA2_STARS = MAIN_STAGES * 3;
 
-export const STAGES: StageDef[] = [
-  // ── Region 1: Pawn Meadows ─────────────────────────────────────────
-  { id: '1-1', region: 1, name: 'First Steps', flavor: 'A few farmhands blocking the road. Show them how a pawn marches.',
-    w: 5, h: 5, deployRows: 1, layout: ['.ppp.'], ai: ai(1, 0.5, 80), reward: 12, lootMult: 1, maxTurns: 25 },
-  { id: '1-2', region: 1, name: 'Village Brawl', flavor: 'The tavern emptied out and everyone wants a fight.',
-    w: 5, h: 5, deployRows: 1, layout: ['p.p.p', '.p.p.'], ai: ai(1, 0.35, 60), reward: 15, lootMult: 1, maxTurns: 25 },
-  { id: '1-3', region: 1, name: 'The Lone Rider', flavor: 'A knight-errant leads the militia. Watch his L-shaped leaps!',
-    w: 5, h: 5, deployRows: 1, layout: ['..n..', 'pp.pp'], ai: ai(1, 0.25, 50), reward: 18, lootMult: 1, maxTurns: 25 },
-  { id: '1-4', region: 1, name: 'Hedge Maze', flavor: 'Old stones split the field. Use them as cover.',
-    w: 5, h: 5, deployRows: 2, layout: ['.pnp.', 'p...p', '.#.#.'], ai: ai(2, 0.25, 50), reward: 22, lootMult: 1, maxTurns: 30 },
-  { id: '1-B', region: 1, name: 'The Iron Golem', flavor: 'An ancient guardian of the meadows stirs. It is slow — but it crushes what it steps on.',
-    w: 6, h: 6, deployRows: 2, layout: ['p....p', '......', '.p..p.'], boss: { kind: 'golem', x: 2, y: 0 },
-    ai: ai(2, 0.2, 40), reward: 60, lootMult: 1, maxTurns: 40, isBoss: true },
+const ai = (depth: number, blunder: number, noise: number, quiesce = false): AiParams => ({
+  depth, blunder: Math.max(0, +blunder.toFixed(3)), noise: Math.max(5, Math.round(noise)), quiesce,
+});
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-  // ── Region 2: Whispering Woods ─────────────────────────────────────
-  { id: '2-1', region: 2, name: 'Forest Ambush', flavor: 'Hoofbeats among the trees.',
-    w: 6, h: 6, deployRows: 2, layout: ['.n..n.', 'pp..pp'], ai: ai(2, 0.2, 40), reward: 30, lootMult: 2, maxTurns: 35 },
-  { id: '2-2', region: 2, name: 'Thicket', flavor: 'Thorny bushes block the straight paths.',
-    w: 6, h: 6, deployRows: 2, layout: ['n.pp.n', '.p..p.', '..#...', '...#..'], ai: ai(2, 0.15, 40), reward: 35, lootMult: 2, maxTurns: 35 },
-  { id: '2-3', region: 2, name: "Bishop's Envoy", flavor: 'A cathedral envoy travels with an escort.',
-    w: 6, h: 6, deployRows: 2, layout: ['.bnnb.', 'pppppp'], ai: ai(2, 0.1, 35), reward: 40, lootMult: 2, maxTurns: 35 },
-  { id: '2-4', region: 2, name: 'Wolf Pack', flavor: 'Four riders hunt as one.',
-    w: 6, h: 6, deployRows: 2, layout: ['nn..nn', 'p.pp.p', '......', '..##..'], ai: ai(2, 0.08, 30), reward: 45, lootMult: 2, maxTurns: 35 },
-  { id: '2-B', region: 2, name: 'The Shadow Steed', flavor: 'A nightmare horse the size of a cottage. Where it lands, nothing stands.',
-    w: 7, h: 7, deployRows: 2, layout: ['n.....n', '.......', 'p.p.p.p'], boss: { kind: 'steed', x: 2, y: 0 },
-    ai: ai(2, 0.1, 30), reward: 150, lootMult: 2, maxTurns: 40, isBoss: true },
+/** Enemy skill per world; t goes 0 → 1 across the 10 main stages (bonus stages go beyond 1). */
+const WORLD_AI: Record<number, (t: number) => AiParams> = {
+  1: (t) => ai(t < 0.35 ? 1 : 2, lerp(0.5, 0.12, t), lerp(80, 35, t)),
+  2: (t) => ai(2, lerp(0.22, 0.06, t), lerp(40, 20, t), t > 0.5),
+  3: (t) => ai(t < 0.15 ? 2 : 3, lerp(0.1, 0.03, t), lerp(30, 15, t), true),
+  4: (t) => ai(3, lerp(0.05, 0.01, t), lerp(20, 10, t), true),
+  5: (t) => ai(3, lerp(0.02, 0, t), lerp(12, 5, t), true),
+};
 
-  // ── Region 3: Cathedral of Ash ─────────────────────────────────────
-  { id: '3-1', region: 3, name: 'Acolytes', flavor: 'Robed figures guard the cathedral steps.',
-    w: 7, h: 7, deployRows: 2, layout: ['..b.b..', 'ppppppp'], ai: ai(2, 0.08, 30, true), reward: 60, lootMult: 3, maxTurns: 40 },
-  { id: '3-2', region: 3, name: 'Stained Glass', flavor: 'Columns of light — and columns of stone.',
-    w: 7, h: 7, deployRows: 2, layout: ['b.n.n.b', '.pp.pp.', '.......', '..#.#..'], ai: ai(3, 0.1, 40), reward: 70, lootMult: 3, maxTurns: 40 },
-  { id: '3-3', region: 3, name: 'Confessional', flavor: 'The wardens of the cathedral never leave their posts.',
-    w: 7, h: 7, deployRows: 2, layout: ['.b.w.b.', 'ppnpnpp'], ai: ai(3, 0.06, 30), reward: 80, lootMult: 3, maxTurns: 40 },
-  { id: '3-4', region: 3, name: 'The Choir', flavor: 'Towers flank the altar.',
-    w: 7, h: 7, deployRows: 2, layout: ['r.b.b.r', 'ppppppp'], ai: ai(3, 0.05, 25, true), reward: 90, lootMult: 3, maxTurns: 40 },
-  { id: '3-B', region: 3, name: 'Archbishop Malakar', flavor: 'The Ash Prophet raises acolytes from the cinders. End his sermon quickly.',
-    w: 7, h: 7, deployRows: 2, layout: ['b.....b', '.......', 'ppp.ppp'], boss: { kind: 'malakar', x: 2, y: 0 },
-    ai: ai(3, 0.05, 25), reward: 300, lootMult: 3, maxTurns: 45, isBoss: true },
+/** [first stage reward, step per stage, boss, bonus 1, bonus 2] and loot multiplier. */
+const WORLD_ECON: Record<number, { reward: [number, number, number, number, number]; loot: number }> = {
+  1: { reward: [10, 2, 60, 80, 120], loot: 1 },
+  2: { reward: [28, 3, 150, 200, 300], loot: 2 },
+  3: { reward: [55, 5, 300, 400, 550], loot: 3 },
+  4: { reward: [105, 8, 500, 650, 900], loot: 4 },
+  5: { reward: [180, 10, 1000, 1300, 1800], loot: 6 },
+};
 
-  // ── Region 4: Stone Bastion ────────────────────────────────────────
-  { id: '4-1', region: 4, name: 'Outer Wall', flavor: 'Battlements and broken stones.',
-    w: 8, h: 8, deployRows: 2, layout: ['r..ww..r', 'pppppppp', '........', '#..##..#'], ai: ai(3, 0.05, 25, true), reward: 110, lootMult: 4, maxTurns: 50 },
-  { id: '4-2', region: 4, name: 'Gatehouse', flavor: 'A classic garrison. They know the old rules well.',
-    w: 8, h: 8, deployRows: 2, layout: ['rnb..bnr', 'pppppppp'], ai: ai(3, 0.04, 20, true), reward: 125, lootMult: 4, maxTurns: 50 },
-  { id: '4-3', region: 4, name: 'Barracks', flavor: 'Wardens drill the recruits day and night.',
-    w: 8, h: 8, deployRows: 2, layout: ['rnbwwbnr', 'pppppppp', '........', '..#..#..'], ai: ai(3, 0.03, 20, true), reward: 140, lootMult: 4, maxTurns: 50 },
-  { id: '4-4', region: 4, name: 'The Keep', flavor: 'The commander herself takes the field.',
-    w: 8, h: 8, deployRows: 2, layout: ['rnbqwbnr', 'pppppppp'], ai: ai(3, 0.03, 15, true), reward: 155, lootMult: 4, maxTurns: 50 },
-  { id: '4-B', region: 4, name: 'The Siege Colossus', flavor: 'A walking fortress. When it raises its fists, get away from it!',
-    w: 8, h: 8, deployRows: 2, layout: ['rn....nr', '........', '.pp..pp.'], boss: { kind: 'colossus', x: 3, y: 0 },
-    ai: ai(3, 0.03, 15), reward: 500, lootMult: 4, maxTurns: 50, isBoss: true },
+const TURNS: Record<number, number> = { 5: 25, 6: 35, 7: 40, 8: 50 };
 
-  // ── Region 5: Obsidian Throne ──────────────────────────────────────
-  { id: '5-1', region: 5, name: 'Ashen Steps', flavor: 'Twin queens guard the stairway.',
-    w: 8, h: 8, deployRows: 3, layout: ['rnbqqbnr', 'pppppppp'], ai: ai(3, 0.02, 15, true), reward: 190, lootMult: 6, maxTurns: 60 },
-  { id: '5-2', region: 5, name: 'Hall of Mirrors', flavor: 'Cardinals glide between obsidian pillars.',
-    w: 8, h: 8, deployRows: 3, layout: ['r.cqqc.r', 'pppppppp', '........', '#......#'], ai: ai(3, 0.02, 10, true), reward: 210, lootMult: 6, maxTurns: 60 },
-  { id: '5-3', region: 5, name: 'Royal Guard', flavor: 'The marshals of the throne room.',
-    w: 8, h: 8, deployRows: 3, layout: ['rmbqqbmr', 'pppppppp', '..w..w..'], ai: ai(3, 0.01, 10, true), reward: 230, lootMult: 6, maxTurns: 60 },
-  { id: '5-4', region: 5, name: "Throne's Shadow", flavor: 'An Amazon leads the last line of defense.',
-    w: 8, h: 8, deployRows: 3, layout: ['rmcaqcmr', 'pppppppp', 'nn....nn'], ai: ai(3, 0, 10, true), reward: 250, lootMult: 6, maxTurns: 60 },
-  { id: '5-B', region: 5, name: 'Vyrmathra, the Dragon Queen', flavor: 'The final throne. Scatter when she inhales — her fire pours down the board.',
-    w: 8, h: 8, deployRows: 3, layout: ['qm....mq', '........', 'pppppppp'], boss: { kind: 'dragon', x: 3, y: 0 },
-    ai: ai(3, 0, 10), reward: 1000, lootMult: 6, maxTurns: 60, isBoss: true },
-];
+type Spec = [name: string, size: number, layout: string[], opts?: { dr?: number; boss?: BossKind; hp?: number }];
+
+/**
+ * Each world: 9 stages, the boss (10th), then bonus stages X1 and X2.
+ * Layout rows go from the top: p n b w r q c m a = enemy pieces, # = rock, . = empty.
+ */
+const WORLDS: Record<number, Spec[]> = {
+  1: [
+    ['First Steps', 5, ['.ppp.'], { dr: 1 }],
+    ['Village Brawl', 5, ['p.p.p', '.p.p.'], { dr: 1 }],
+    ['Pitchforks', 5, ['ppppp'], { dr: 1 }],
+    ['The Lone Rider', 5, ['..n..', 'pp.pp'], { dr: 1 }],
+    ['Hedge Maze', 5, ['.pnp.', 'p...p', '.#.#.']],
+    ['Twin Riders', 5, ['n...n', '.ppp.']],
+    ['Old Mill', 6, ['.pnnp.', 'p....p', '..##..']],
+    ['Scarecrows', 6, ['n.pp.n', 'pp..pp']],
+    ['Bandit Camp', 6, ['.n.bn.', 'pppppp']],
+    ['The Iron Golem', 6, ['p....p', '......', '.p..p.'], { boss: 'golem' }],
+    ['Harvest Feud', 6, ['nnbbnn', 'pppppp']],
+    ['Golem Awakened', 6, ['n....n', '......', 'pp..pp'], { boss: 'golem', hp: 5 }],
+  ],
+  2: [
+    ['Forest Ambush', 6, ['.n..n.', 'pp..pp']],
+    ['Thicket', 6, ['n.pp.n', '.p..p.', '..#...', '...#..']],
+    ['Fox Den', 6, ['nn..nn', '.pppp.']],
+    ["Bishop's Envoy", 6, ['.bnnb.', 'pppppp']],
+    ['Mossy Stones', 6, ['b.nn.b', 'pp..pp', '#....#']],
+    ['Wolf Pack', 6, ['nn..nn', 'p.pp.p', '......', '..##..']],
+    ['Night Patrol', 7, ['.n.b.n.', 'ppppppp']],
+    ["Hunters' Lodge", 7, ['n.bwb.n', '.ppppp.', '...#...']],
+    ['Ranger Hold', 7, ['nb.w.bn', 'ppppppp', '#.....#']],
+    ['The Shadow Steed', 7, ['n.....n', '.......', 'p.p.p.p'], { boss: 'steed' }],
+    ['Wild Hunt', 7, ['nnbwbnn', 'ppppppp']],
+    ['Steed of Nightmares', 7, ['nn...nn', '.......', 'ppppppp'], { boss: 'steed', hp: 8 }],
+  ],
+  3: [
+    ['Acolytes', 7, ['..b.b..', 'ppppppp']],
+    ['Candlelight', 7, ['.b.n.b.', 'pp.p.pp', '...#...']],
+    ['Stained Glass', 7, ['b.n.n.b', '.pp.pp.', '.......', '..#.#..']],
+    ['Confessional', 7, ['.b.w.b.', 'ppnpnpp']],
+    ['Bell Tower', 7, ['r.....r', 'ppbpbpp']],
+    ['The Crypt', 7, ['.bwrwb.', 'p.ppp.p', '#.....#']],
+    ['Cloister', 7, ['nb.r.bn', 'ppppppp']],
+    ['The Choir', 7, ['r.b.b.r', 'ppppppp']],
+    ['Inquisition', 7, ['rbnwnbr', 'ppppppp']],
+    ['Archbishop Malakar', 7, ['b.....b', '.......', 'ppp.ppp'], { boss: 'malakar' }],
+    ['High Mass', 7, ['rbbwbbr', 'ppppppp', '..n.n..']],
+    ['Malakar Ascended', 7, ['rb...br', '.......', 'ppppppp'], { boss: 'malakar', hp: 11 }],
+  ],
+  4: [
+    ['Outer Wall', 8, ['r..ww..r', 'pppppppp', '........', '#..##..#']],
+    ['Moat Bridge', 8, ['.n.rr.n.', 'pppppppp', '........', '###..###']],
+    ['Gatehouse', 8, ['rnb..bnr', 'pppppppp']],
+    ['Armory', 8, ['rnbwwbnr', 'pppppppp']],
+    ['Barracks', 8, ['rnbwwbnr', 'pppppppp', '........', '..#..#..']],
+    ['Siege Engines', 8, ['r.nqwn.r', 'pppppppp']],
+    ['The Keep', 8, ['rnbqwbnr', 'pppppppp']],
+    ['Battlements', 8, ['rnbqwbnr', 'pppppppp', '...rr...']],
+    ['Iron Guard', 8, ['rnbqqbnr', 'pppppppp']],
+    ['The Siege Colossus', 8, ['rn....nr', '........', '.pp..pp.'], { boss: 'colossus' }],
+    ['Last Bastion', 8, ['rnbqqbnr', 'pppppppp', '..w..w..']],
+    ['Colossus Unchained', 8, ['rr....rr', '........', 'pppppppp'], { boss: 'colossus', hp: 13 }],
+  ],
+  5: [
+    ['Ashen Steps', 8, ['rnbqqbnr', 'pppppppp']],
+    ['Ember Gate', 8, ['r.cqqc.r', 'pppppppp', '........', '#......#']],
+    ['Hall of Mirrors', 8, ['rncqqcnr', 'pppppppp']],
+    ['Obsidian Guard', 8, ['rmbqqbmr', 'pppppppp']],
+    ['Royal Guard', 8, ['rmbqqbmr', 'pppppppp', '..w..w..']],
+    ['Lava Fields', 8, ['rmcqqcmr', 'pppppppp', '........', '.#....#.']],
+    ['Dragonkin', 8, ['rmcaqcmr', 'pppppppp']],
+    ["Throne's Shadow", 8, ['rmcaqcmr', 'pppppppp', 'nn....nn']],
+    ['The Last Wall', 8, ['amcqqcma', 'pppppppp', 'nn....nn']],
+    ['Vyrmathra, the Dragon Queen', 8, ['qm....mq', '........', 'pppppppp'], { boss: 'dragon' }],
+    ['Court of Ash', 8, ['amcqqcma', 'pppppppp', 'wnw..wnw']],
+    ['Eternal Flame', 8, ['qa....aq', '........', 'pppppppp', '..m..m..'], { boss: 'dragon', hp: 18 }],
+  ],
+};
+
+function buildWorld(region: number, specs: Spec[]): StageDef[] {
+  const econ = WORLD_ECON[region];
+  const [base, step, bossReward, x1, x2] = econ.reward;
+  return specs.map(([name, size, layout, opts = {}], i) => {
+    const n = i + 1;
+    const extra = n > MAIN_STAGES ? ((n - MAIN_STAGES) as 1 | 2) : undefined;
+    const isBoss = !!opts.boss;
+    const t = extra ? 1 + 0.15 * extra : i / (MAIN_STAGES - 1);
+    return {
+      id: extra ? `${region}-X${extra}` : `${region}-${n}`,
+      region,
+      name,
+      w: size,
+      h: size,
+      deployRows: opts.dr ?? (region === 5 ? 3 : 2),
+      layout,
+      boss: opts.boss ? { kind: opts.boss, x: Math.floor(size / 2) - 1, y: 0, hp: opts.hp } : undefined,
+      ai: WORLD_AI[region](t),
+      reward: extra === 1 ? x1 : extra === 2 ? x2 : n === MAIN_STAGES ? bossReward : base + step * i,
+      lootMult: econ.loot,
+      maxTurns: TURNS[size] + (region === 5 ? 10 : 0) + (isBoss || extra ? 10 : 0),
+      isBoss,
+      extra,
+    };
+  });
+}
+
+export const STAGES: StageDef[] = REGIONS.flatMap((r) => buildWorld(r.id, WORLDS[r.id]));
+const MAIN = STAGES.filter((s) => !s.extra);
 
 export const STAGE_BY_ID: Record<string, StageDef> = Object.fromEntries(STAGES.map((s) => [s.id, s]));
 
-export const ARENA_UNLOCK = '2-B';
+export const ARENA_UNLOCK = '2-10';
 
 export type StageProgress = Record<string, { stars: number; clears: number }>;
 
 export const isCleared = (p: StageProgress, id: string) => (p[id]?.stars ?? 0) > 0;
 
+/** Stars earned in a world's 10 main stages. */
+export function mainStars(p: StageProgress, region: number): number {
+  return MAIN.filter((s) => s.region === region).reduce((a, s) => a + (p[s.id]?.stars ?? 0), 0);
+}
+
+export const extraStarsNeeded = (extra: 1 | 2) => (extra === 1 ? EXTRA1_STARS : EXTRA2_STARS);
+
 export function isStageUnlocked(p: StageProgress, stage: StageDef): boolean {
-  const i = STAGES.findIndex((s) => s.id === stage.id);
-  return i <= 0 || isCleared(p, STAGES[i - 1].id);
+  if (stage.extra) return mainStars(p, stage.region) >= extraStarsNeeded(stage.extra);
+  const i = MAIN.findIndex((s) => s.id === stage.id);
+  return i <= 0 || isCleared(p, MAIN[i - 1].id);
+}
+
+/** The stage after this one in the same world, if any. */
+export function nextStage(stage: StageDef): StageDef | undefined {
+  if (stage.extra || stage.isArena) return undefined;
+  const i = MAIN.findIndex((s) => s.id === stage.id);
+  const next = MAIN[i + 1];
+  return next?.region === stage.region ? next : undefined;
 }
 
 export function isPieceUnlocked(p: StageProgress, type: PieceType): boolean {
@@ -174,16 +260,14 @@ export function arenaStage(level: number): StageDef {
     const r = Array<string>(size).fill('.');
     const n = 1 + Math.floor(rnd() * 3);
     for (let i = 0; i < n; i++) r[Math.floor(rnd() * size)] = '#';
-    while (layout.length < 3) layout.push('.'.repeat(size));
     layout.push(r.join(''));
   }
 
   return {
     id: `arena-${level}`, region: 0, isArena: true, isBoss,
     name: isBoss ? `Arena ${level}: ${BOSSES[boss!.kind].name}` : `Arena ${level}: ${pick(ARENA_NAMES)}`,
-    flavor: isBoss ? 'A champion beast is released into the arena!' : 'The crowd roars. Fresh challengers step onto the sand.',
     w: size, h: size, deployRows: size >= 8 ? 3 : 2, layout, boss,
-    ai: ai(level < 2 ? 1 : level < 6 ? 2 : 3, Math.max(0, 0.25 - level * 0.03), Math.max(5, 60 - level * 6), level >= 8),
+    ai: ai(level < 2 ? 1 : level < 6 ? 2 : 3, 0.25 - level * 0.03, 60 - level * 6, level >= 8),
     reward: 40 + level * 20, lootMult: 1 + Math.floor(level / 3), maxTurns: 40 + size * 2,
   };
 }

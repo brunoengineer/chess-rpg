@@ -23,7 +23,6 @@ export interface PieceDef {
   leaps: number[][];
   /** Stage that must be cleared to unlock it in the shop (none = always). */
   unlockedBy?: string;
-  desc: string;
 }
 
 const T = '︎'; // force text (not emoji) presentation
@@ -37,51 +36,15 @@ const G = {
 };
 
 export const PIECES: Record<PieceType, PieceDef> = {
-  pawn: {
-    type: 'pawn', name: 'Pawn', glyph: G.pawn, value: 1, command: 1, price: 15, mercPrice: 4,
-    slides: [], leaps: [],
-    desc: 'Marches forward one square (two on its first move on big boards), captures diagonally. Becomes a Queen for the rest of the battle on the last row.',
-  },
-  knight: {
-    type: 'knight', name: 'Knight', glyph: G.knight, value: 3, command: 3, price: 70, mercPrice: 18,
-    slides: [], leaps: KNIGHT, unlockedBy: '1-3',
-    desc: 'Leaps in an L shape, jumping over anything in the way.',
-  },
-  bishop: {
-    type: 'bishop', name: 'Bishop', glyph: G.bishop, value: 3, command: 3, price: 80, mercPrice: 20,
-    slides: DIAG, leaps: [], unlockedBy: '1-B',
-    desc: 'Slides any distance diagonally.',
-  },
-  warden: {
-    type: 'warden', name: 'Warden', glyph: G.king, value: 3, command: 3, price: 90, mercPrice: 22,
-    slides: [], leaps: [...ORTH, ...DIAG], unlockedBy: '2-2',
-    desc: 'A veteran bodyguard. Steps one square in any direction. Not royal: losing it does not lose the game.',
-  },
-  rook: {
-    type: 'rook', name: 'Rook', glyph: G.rook, value: 5, command: 5, price: 170, mercPrice: 42,
-    slides: ORTH, leaps: [], unlockedBy: '2-B',
-    desc: 'Slides any distance in straight lines. Heavy piece: deals 2 damage to bosses.',
-  },
-  cardinal: {
-    type: 'cardinal', name: 'Cardinal', glyph: G.bishop, badge: G.knight, value: 7, command: 7, price: 650, mercPrice: 160,
-    slides: DIAG, leaps: KNIGHT, unlockedBy: '4-2',
-    desc: 'Bishop + Knight. Slides diagonally or leaps in an L. Deals 2 damage to bosses.',
-  },
-  marshal: {
-    type: 'marshal', name: 'Marshal', glyph: G.rook, badge: G.knight, value: 8, command: 8, price: 800, mercPrice: 200,
-    slides: ORTH, leaps: KNIGHT, unlockedBy: '4-B',
-    desc: 'Rook + Knight. Slides in straight lines or leaps in an L. Deals 2 damage to bosses.',
-  },
-  queen: {
-    type: 'queen', name: 'Queen', glyph: G.queen, value: 9, command: 9, price: 480, mercPrice: 120,
-    slides: [...ORTH, ...DIAG], leaps: [], unlockedBy: '3-B',
-    desc: 'Slides any distance in any direction. Deals 2 damage to bosses.',
-  },
-  amazon: {
-    type: 'amazon', name: 'Amazon', glyph: G.queen, badge: G.knight, value: 12, command: 12, price: 1800, mercPrice: 450,
-    slides: [...ORTH, ...DIAG], leaps: KNIGHT, unlockedBy: '5-3',
-    desc: 'Queen + Knight. The most powerful piece in the realm. Deals 3 damage to bosses.',
-  },
+  pawn: { type: 'pawn', name: 'Pawn', glyph: G.pawn, value: 1, command: 1, price: 20, mercPrice: 5, slides: [], leaps: [] },
+  knight: { type: 'knight', name: 'Knight', glyph: G.knight, value: 3, command: 3, price: 100, mercPrice: 25, slides: [], leaps: KNIGHT, unlockedBy: '1-4' },
+  bishop: { type: 'bishop', name: 'Bishop', glyph: G.bishop, value: 3, command: 3, price: 110, mercPrice: 28, slides: DIAG, leaps: [], unlockedBy: '1-10' },
+  warden: { type: 'warden', name: 'Warden', glyph: G.king, value: 3, command: 3, price: 120, mercPrice: 30, slides: [], leaps: [...ORTH, ...DIAG], unlockedBy: '2-5' },
+  rook: { type: 'rook', name: 'Rook', glyph: G.rook, value: 5, command: 5, price: 240, mercPrice: 60, slides: ORTH, leaps: [], unlockedBy: '2-10' },
+  queen: { type: 'queen', name: 'Queen', glyph: G.queen, value: 9, command: 9, price: 700, mercPrice: 175, slides: [...ORTH, ...DIAG], leaps: [], unlockedBy: '3-10' },
+  cardinal: { type: 'cardinal', name: 'Cardinal', glyph: G.bishop, badge: G.knight, value: 7, command: 7, price: 950, mercPrice: 240, slides: DIAG, leaps: KNIGHT, unlockedBy: '4-5' },
+  marshal: { type: 'marshal', name: 'Marshal', glyph: G.rook, badge: G.knight, value: 8, command: 8, price: 1150, mercPrice: 290, slides: ORTH, leaps: KNIGHT, unlockedBy: '4-10' },
+  amazon: { type: 'amazon', name: 'Amazon', glyph: G.queen, badge: G.knight, value: 12, command: 12, price: 2600, mercPrice: 650, slides: [...ORTH, ...DIAG], leaps: KNIGHT, unlockedBy: '5-6' },
 };
 
 export const PIECE_ORDER: PieceType[] = ['pawn', 'knight', 'bishop', 'warden', 'rook', 'queen', 'cardinal', 'marshal', 'amazon'];

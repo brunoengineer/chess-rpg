@@ -8,14 +8,15 @@ saves through Firebase.
 
 ## Features
 
-- **Campaign:** 5 realms, 25 stages. Boards grow from 5×5 to 8×8, and the AI gets stronger as you go.
+- **Campaign:** 5 realms with 10 stages each; stage 10 is the boss. Boards grow from 5×5 to 8×8, and the AI gets stronger as you go.
+- **Bonus stages:** each realm has 2 extra stages, unlocked by stars earned in its 10 main stages. The first needs 27 of 30 stars, the second all 30.
 - **Economy:** you get coins for each enemy piece you capture (stronger pieces give more), for hitting a boss,
   for promoting a pawn and for winning. The first win on a stage pays double.
 - **Shop:** 9 piece types. Besides the classic pieces there are fairy pieces: Warden, Cardinal (Bishop+Knight),
   Marshal (Rook+Knight) and Amazon (Queen+Knight). Each one unlocks after you clear a certain stage.
-- **Permanent or mercenary:** a permanent recruit stays in your army until it is captured. A mercenary costs
-  about a quarter of the price but leaves after one battle. You can own any number of each piece.
-- **The Fallen:** captured permanent pieces go to the graveyard. You can revive them for half their price.
+- **Buy or hire:** a piece you buy is yours forever. Even if it is captured, it comes back after the battle. A
+  hired mercenary costs about a quarter of the price but leaves after one battle. You can own any number of each
+  piece.
 - **Leadership:** command points that limit how big an army you can deploy. Upgrading it is the main long-term
   coin sink.
 - **Deployment:** before each fight you place pieces from your army in your rows of the board. You can
@@ -104,7 +105,7 @@ All the numbers are in a few files:
 - Stage rewards, AI strength and layouts: `src/game/campaign.ts`
 - Leadership prices and loot formulas: `src/game/economy.ts`
 
-Stage layouts are plain strings, one per row from the top: `p n b w r q c m a` are enemy pieces, `#` is a rock
+Stages are defined per realm in the `WORLDS` table in `campaign.ts`. Layouts are plain strings, one per row from the top: `p n b w r q c m a` are enemy pieces, `#` is a rock
 and `.` is an empty square.
 
 ## Ideas for next steps

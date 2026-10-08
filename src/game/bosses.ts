@@ -23,27 +23,27 @@ export const BOSSES: Record<BossKind, BossDef> = {
   golem: {
     kind: 'golem', name: 'Iron Golem', title: 'Guardian of the Meadows', emoji: '🗿', hp: 3,
     leaps: ORTH, moveEvery: 2,
-    moveText: 'Lumbers one square orthogonally every other turn, crushing anything beneath it.',
+    moveText: 'Crushes · moves every 2nd turn',
     aura: '#8fb3c9',
   },
   steed: {
     kind: 'steed', name: 'Shadow Steed', title: 'Nightmare of the Woods', emoji: '🐎', hp: 5,
     leaps: KNIGHT, moveEvery: 2,
-    moveText: 'Leaps in an L shape every other turn, trampling everything where it lands.',
+    moveText: 'L-leaps · crushes · every 2nd turn',
     aura: '#7b5cff',
   },
   malakar: {
     kind: 'malakar', name: 'Archbishop Malakar', title: 'The Ash Prophet', emoji: '🧙', hp: 7,
     leaps: [...DIAG, ...scale(DIAG, 2)], moveEvery: 1,
     summon: { every: 3, type: 'pawn' },
-    moveText: 'Glides 1–2 squares diagonally. Raises an acolyte pawn every 3 turns.',
+    moveText: 'Diagonal 1–2 · summons pawns',
     aura: '#c45cff',
   },
   colossus: {
     kind: 'colossus', name: 'Siege Colossus', title: 'Walker of the Bastion', emoji: '🏰', hp: 9,
     leaps: [...ORTH, ...scale(ORTH, 2)], moveEvery: 2,
     telegraph: { every: 3, kind: 'quake' },
-    moveText: 'Strides 1–2 squares in straight lines every other turn. Every 3 turns it raises its fists: next turn the ground around it QUAKES.',
+    moveText: 'Straight 1–2 · quakes around it',
     aura: '#d9a35b',
   },
   dragon: {
@@ -51,7 +51,7 @@ export const BOSSES: Record<BossKind, BossDef> = {
     leaps: [...ORTH, ...DIAG, ...KNIGHT], moveEvery: 1,
     summon: { every: 5, type: 'knight' },
     telegraph: { every: 4, kind: 'breath' },
-    moveText: 'Flies one square in any direction or leaps in an L. Every 4 turns she inhales: next turn FIRE pours down her columns. Calls a knight every 5 turns.',
+    moveText: 'Flies · breathes fire · summons knights',
     aura: '#ff5a3c',
   },
 };

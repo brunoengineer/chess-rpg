@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { BOSSES } from '../game/bosses';
-import { REGIONS, STAGES, isCleared, isStageUnlocked } from '../game/campaign';
+import { MAIN_STAGES, REGIONS, STAGES, extraStarsNeeded, isCleared, isStageUnlocked, mainStars } from '../game/campaign';
+import type { StageDef } from '../game/types';
 import { useStore } from '../state/store';
 
 export function Stars({ n, max = 3 }: { n: number; max?: number }) {
@@ -13,58 +14,66 @@ export function Stars({ n, max = 3 }: { n: number; max?: number }) {
   );
 }
 
+function StageNode({ s, current }: { s: StageDef; current: boolean }) {
+  const { save, setView } = useStore();
+  const open = isStageUnlocked(save.stages, s);
+  const p = save.stages[s.id];
+  const face = !open ? '🔒' : s.extra ? (s.isBoss ? BOSSES[s.boss!.kind].emoji : '✦') : s.isBoss ? BOSSES[s.boss!.kind].emoji : s.id.split('-')[1];
+  return (
+    <button
+      className={`stage-node ${s.isBoss ? 'boss' : ''} ${s.extra ? 'extra' : ''} ${p ? 'cleared' : ''} ${current ? 'current' : ''}`}
+      disabled={!open}
+      onClick={() => setView({ name: 'deploy', stage: s })}
+      title={s.name}
+    >
+      <span className="node-face">{face}</span>
+      <span className="node-label">{open ? s.name : s.extra ? `★ ${extraStarsNeeded(s.extra)}` : ''}</span>
+      {p && <Stars n={p.stars} />}
+    </button>
+  );
+}
+
 export function CampaignTab() {
   const { save, setView } = useStore();
   const progress = save.stages;
-  const nextStage = STAGES.find((s) => !isCleared(progress, s.id) && isStageUnlocked(progress, s));
+  const nextStage = STAGES.find((s) => !s.extra && !isCleared(progress, s.id) && isStageUnlocked(progress, s));
 
   return (
     <div className="campaign">
       {save.active && (
         <button className="resume-banner" onClick={() => setView({ name: 'battle' })}>
-          ⚔️ A battle is in progress — <b>{save.active.stage.name}</b>. Tap to resume.
+          ⚔️ Resume: <b>{save.active.stage.name}</b>
         </button>
       )}
       {REGIONS.map((r) => {
         const stages = STAGES.filter((s) => s.region === r.id);
-        const unlocked = isStageUnlocked(progress, stages[0]);
-        const stars = stages.reduce((a, s) => a + (progress[s.id]?.stars ?? 0), 0);
-        const prevBoss = STAGES.find((s) => s.region === r.id - 1 && s.isBoss);
+        const main = stages.filter((s) => !s.extra);
+        const extras = stages.filter((s) => s.extra);
+        const unlocked = isStageUnlocked(progress, main[0]);
+        const prevBoss = STAGES.find((s) => s.region === r.id - 1 && s.isBoss && !s.extra);
         return (
           <section key={r.id} className={`region ${unlocked ? '' : 'locked'}`} style={{ background: r.bg, ['--accent' as string]: r.accent } as CSSProperties}>
             <header className="region-head">
               <span className="region-icon">{r.icon}</span>
-              <div>
-                <h2>{r.name}</h2>
-                <p>{r.subtitle}</p>
-              </div>
-              <span className="region-stars">★ {stars}/{stages.length * 3}</span>
+              <h2>{r.name}</h2>
+              <span className="region-stars">★ {mainStars(progress, r.id)}/{MAIN_STAGES * 3}</span>
             </header>
             {unlocked ? (
               <div className="stage-path">
-                {stages.map((s, i) => {
-                  const open = isStageUnlocked(progress, s);
-                  const p = progress[s.id];
-                  const current = s.id === nextStage?.id;
-                  return (
-                    <div key={s.id} className="stage-wrap">
-                      {i > 0 && <span className={`path-line ${open ? 'open' : ''}`} />}
-                      <button
-                        className={`stage-node ${s.isBoss ? 'boss' : ''} ${p ? 'cleared' : ''} ${current ? 'current' : ''}`}
-                        disabled={!open}
-                        onClick={() => setView({ name: 'deploy', stage: s })}
-                        title={s.name}
-                      >
-                        <span className="node-face">{!open ? '🔒' : s.isBoss ? BOSSES[s.boss!.kind].emoji : s.id.split('-')[1]}</span>
-                        <span className="node-label">{s.name}</span>
-                        {p && <Stars n={p.stars} />}
-                      </button>
-                    </div>
-                  );
-                })}
+                {main.map((s, i) => (
+                  <div key={s.id} className="stage-wrap">
+                    {i > 0 && <span className={`path-line ${isStageUnlocked(progress, s) ? 'open' : ''}`} />}
+                    <StageNode s={s} current={s.id === nextStage?.id} />
+                  </div>
+                ))}
+                <div className="extras">
+                  {extras.map((s) => (
+                    <StageNode key={s.id} s={s} current={false} />
+                  ))}
+                </div>
               </div>
             ) : (
-              <p className="region-lock">🔒 Defeat <b>{prevBoss?.name}</b> to open the way.</p>
+              <p className="region-lock">🔒 {prevBoss?.name}</p>
             )}
           </section>
         );

@@ -9,7 +9,7 @@ const C = 3;
 export function MoveDiagram({ type }: { type: PieceType }) {
   const marks = new Map<number, 'move' | 'capture'>();
   const b = createBattle(
-    { id: 'diagram', region: 0, name: '', flavor: '', w: N, h: N, deployRows: 0, layout: [], ai: { depth: 0, blunder: 0, noise: 0 }, reward: 0, lootMult: 0, maxTurns: 1 },
+    { id: 'diagram', region: 0, name: '', w: N, h: N, deployRows: 0, layout: [], ai: { depth: 0, blunder: 0, noise: 0 }, reward: 0, lootMult: 0, maxTurns: 1 },
     [{ type, temp: false, x: C, y: C }],
   );
   for (const m of genUnitMoves(b, 0)) marks.set(m.y * N + m.x, 'move');

@@ -51,4 +51,3 @@ export const leadershipCost = (level: number) => {
   return Math.round((15 + 8 * k + 0.4 * k * k) / 5) * 5;
 };
 export const MAX_LEADERSHIP = 40;
-export const reviveCost = (t: PieceType) => Math.ceil(PIECES[t].price / 2);

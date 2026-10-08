@@ -1,5 +1,5 @@
 import { isCleared, unlocksOf, ARENA_UNLOCK } from '../game/campaign';
-import { leadershipCost, MAX_LEADERSHIP, reviveCost, type BattleResult } from '../game/economy';
+import { leadershipCost, MAX_LEADERSHIP, type BattleResult } from '../game/economy';
 import { createBattle } from '../game/engine';
 import { PIECES } from '../game/pieces';
 import type { PieceType, Placement, StageDef } from '../game/types';
@@ -27,18 +27,6 @@ export function buyPiece(type: PieceType, merc: boolean) {
   return true;
 }
 
-export function revivePiece(type: PieceType) {
-  const price = reviveCost(type);
-  if (!spend(price)) return false;
-  st().update((s) => {
-    s.coins -= price;
-    addCount(s.fallen, type, -1);
-    addCount(s.army, type, 1);
-  });
-  st().toast(`${PIECES[type].name} returns to the barracks!`, '✨');
-  return true;
-}
-
 export function buyLeadership() {
   const { leadership } = st().save;
   if (leadership >= MAX_LEADERSHIP) return false;
@@ -49,12 +37,6 @@ export function buyLeadership() {
     s.leadership += 1;
   });
   return true;
-}
-
-/** Free emergency mercenaries so a broke player can never get stuck. */
-export function callMilitia() {
-  st().update((s) => addCount(s.mercs, 'pawn', 3));
-  st().toast('The village sends 3 militia pawns!', '🛡️');
 }
 
 export function startBattle(stage: StageDef, placements: Placement[]) {
@@ -78,8 +60,8 @@ export function finishBattle(stage: StageDef, result: BattleResult, captures: nu
     if (result.win) s.stats.wins++;
     else s.stats.losses++;
     if (result.win && stage.isBoss) s.stats.bossesSlain++;
-    for (const u of result.survivors) if (!u.temp) addCount(s.army, u.type, 1);
-    for (const u of result.lost) if (!u.temp) addCount(s.fallen, u.type, 1);
+    // Owned pieces always come home, even if captured. Mercenaries leave.
+    for (const u of [...result.survivors, ...result.lost]) if (!u.temp) addCount(s.army, u.type, 1);
     if (stage.isArena) {
       if (result.win) {
         s.arena.best = Math.max(s.arena.best, s.arena.level);

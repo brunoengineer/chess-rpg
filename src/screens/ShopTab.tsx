@@ -23,17 +23,16 @@ export function ShopTab() {
 
   return (
     <div className="shop">
-      <section className={`panel leadership-card ${flash === 'lead' ? 'flash' : ''}`}>
+      <section className={`panel leadership-card ${flash === 'lead' ? 'flash' : ''}`} title="Command points for deploying pieces">
         <div className="lead-icon">👑</div>
         <div className="lead-body">
           <h3>Leadership <span className="lead-level">{save.leadership}</span></h3>
-          <p>Command points you can spend when deploying an army. Each piece costs its command value (Pawn 1, Knight 3, Rook 5, Queen 9…).</p>
           <div className="lead-bar">
             <i style={{ width: `${(save.leadership / MAX_LEADERSHIP) * 100}%` }} />
           </div>
         </div>
         <button className="btn btn-primary" disabled={maxed || save.coins < lCost} onClick={() => buyLeadership() && bump('lead')}>
-          {maxed ? 'Maxed' : <>+1 for 🪙 {lCost}</>}
+          {maxed ? 'Max' : <>+1 · 🪙 {lCost}</>}
         </button>
       </section>
 
@@ -51,6 +50,8 @@ function PieceCard({ type, flash, onBought }: { type: PieceType; flash: boolean;
   const def = PIECES[type];
   const unlocked = isPieceUnlocked(save.stages, type);
   const req = def.unlockedBy ? STAGE_BY_ID[def.unlockedBy] : null;
+  const owned = count(save.army, type);
+  const mercs = count(save.mercs, type);
   return (
     <article className={`panel piece-card ${unlocked ? '' : 'locked'} ${flash ? 'flash' : ''}`}>
       <header>
@@ -58,31 +59,25 @@ function PieceCard({ type, flash, onBought }: { type: PieceType; flash: boolean;
         <div>
           <h3>{def.name}</h3>
           <div className="chips">
-            <span className="chip" title="Command points to deploy">👑 {def.command}</span>
-            <span className="chip" title="Material value (loot when captured)">💎 {def.value}</span>
-            <span className="chip" title="Damage dealt to bosses">⚔ {bossDamage(type)}</span>
+            <span className="chip" title="Command cost">👑 {def.command}</span>
+            <span className="chip" title="Boss damage">⚔ {bossDamage(type)}</span>
+            {owned > 0 && <span className="chip owned-chip" title="Owned">🛡️ {owned}</span>}
+            {mercs > 0 && <span className="chip" title="Mercenaries">⏳ {mercs}</span>}
           </div>
         </div>
       </header>
       <MoveDiagram type={type} />
-      <p className="piece-desc">{def.desc}</p>
       {unlocked ? (
-        <>
-          <p className="owned">
-            Owned: <b>{count(save.army, type)}</b> {count(save.mercs, type) > 0 && <>· Mercs: <b>{count(save.mercs, type)}</b></>}
-            {count(save.fallen, type) > 0 && <> · Fallen: <b>{count(save.fallen, type)}</b></>}
-          </p>
-          <div className="buy-row">
-            <button className="btn btn-primary" disabled={save.coins < def.price} onClick={() => buyPiece(type, false) && onBought()}>
-              Recruit <span>🪙 {def.price}</span>
-            </button>
-            <button className="btn btn-ghost" disabled={save.coins < def.mercPrice} onClick={() => buyPiece(type, true) && onBought()} title="Fights in one battle only, then leaves">
-              ⏳ Hire <span>🪙 {def.mercPrice}</span>
-            </button>
-          </div>
-        </>
+        <div className="buy-row">
+          <button className="btn btn-primary" disabled={save.coins < def.price} onClick={() => buyPiece(type, false) && onBought()} title="Yours forever">
+            Buy · 🪙 {def.price}
+          </button>
+          <button className="btn btn-ghost" disabled={save.coins < def.mercPrice} onClick={() => buyPiece(type, true) && onBought()} title="One battle only">
+            ⏳ Hire · 🪙 {def.mercPrice}
+          </button>
+        </div>
       ) : (
-        <p className="lock-note">🔒 Clear <b>{req?.id} · {req?.name}</b> to unlock</p>
+        <p className="lock-note">🔒 Clear {req?.id}</p>
       )}
     </article>
   );

@@ -220,7 +220,16 @@ button { font: inherit; color: inherit; }
 }
 .region.locked { filter: grayscale(0.7) brightness(0.7); }
 .region-head { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; }
-.region-head p { margin: 2px 0 0; color: rgba(255, 255, 255, 0.65); font-size: 0.9rem; }
+.extras {
+  display: flex; gap: 6px; align-items: flex-start; margin-left: 18px; padding-left: 16px;
+  border-left: 2px dashed rgba(255, 255, 255, 0.18);
+}
+.stage-node.extra .node-face {
+  border-radius: 18px; font-size: 1.5rem;
+  background: radial-gradient(circle at 50% 35%, rgba(246, 196, 83, 0.4), rgba(0, 0, 0, 0.35) 70%);
+  border-color: rgba(246, 196, 83, 0.6);
+}
+.stage-node.extra.boss .node-face { width: 62px; height: 62px; margin-top: 0; font-size: 1.8rem; border-color: #ff7a59; }
 .region-icon { font-size: 2.3rem; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)); }
 .region-stars { margin-left: auto; color: var(--gold); font-weight: 700; white-space: nowrap; }
 .region-lock { position: relative; z-index: 1; margin: 14px 0 4px; color: rgba(255, 255, 255, 0.75); }
@@ -508,6 +517,7 @@ button { font: inherit; color: inherit; }
 .hp-bar { height: 10px; }
 .hp-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff8a7a, #d42a22); box-shadow: 0 0 10px rgba(255, 70, 50, 0.6); transition: width 0.4s; }
 .captured { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.lost-row { justify-content: flex-end; opacity: 0.7; }
 .glyph-row { display: flex; flex-wrap: wrap; gap: 2px; font-size: 1.5rem; min-height: 1.6rem; margin-top: 4px; }
 .battle-actions { display: flex; gap: 8px; justify-content: space-between; }
 .telegraph-warning {
@@ -550,7 +560,7 @@ button { font: inherit; color: inherit; }
   border: 1px solid rgba(246, 196, 83, 0.5);
   animation: popIn 0.5s 0.9s backwards;
 }
-.unlock > div { display: grid; }
+.unlock { width: 100%; cursor: pointer; color: inherit; font: inherit; justify-content: center; }
 
 .toasts { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); z-index: 60; display: grid; gap: 8px; justify-items: center; pointer-events: none; }
 .toast {
@@ -566,7 +576,7 @@ button { font: inherit; color: inherit; }
 .settings > .btn-google { width: 100%; margin-bottom: 8px; }
 .toggles { display: grid; gap: 4px; margin: 10px 0 16px; }
 .toggle-row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; cursor: pointer; border-bottom: 1px solid var(--border); }
-.toggle-row > span:first-child { flex: 1; display: grid; }
+.toggle-row > span:first-child { flex: 1; font-weight: 600; }
 .toggle-row input { display: none; }
 .switch { width: 44px; height: 26px; border-radius: 99px; background: rgba(255, 255, 255, 0.15); position: relative; transition: background 0.2s; flex: none; }
 .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4); }
@@ -627,3 +637,4 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+.unlock .big-icon { font-size: 2.2rem; }
