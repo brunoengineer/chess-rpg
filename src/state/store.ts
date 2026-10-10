@@ -4,7 +4,12 @@ import { firebaseEnabled, loadCloudSave, signInWithGoogle, signOutUser, watchAut
 import { chooseAccountSave, defaultSave, normalizeSave, type SaveData } from './save';
 
 export type Tab = 'campaign' | 'arena' | 'shop' | 'barracks';
-export type View = { name: 'hub'; tab: Tab } | { name: 'deploy'; stage: StageDef } | { name: 'battle' };
+export type ShopSection = 'army' | 'cards' | 'style';
+/** `section` picks the Shop section; `focus` scrolls to and highlights an item (e.g. 'piece:knight', 'card:freeze'). */
+export type View =
+  | { name: 'hub'; tab: Tab; section?: ShopSection; focus?: string }
+  | { name: 'deploy'; stage: StageDef }
+  | { name: 'battle' };
 
 export interface Player {
   uid: string;

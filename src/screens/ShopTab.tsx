@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { sfx } from '../audio';
 import { MoveDiagram } from '../components/MoveDiagram';
 import { PieceGlyph } from '../components/Piece';
@@ -11,9 +11,7 @@ import { profile } from '../game/ranks';
 import type { PieceType } from '../game/types';
 import { buyCard, buyCardSlot, buyLeadership, buyPiece, buySkin, equipSkin } from '../state/actions';
 import { classRanks, count } from '../state/save';
-import { useStore } from '../state/store';
-
-type Section = 'army' | 'cards' | 'style';
+import { useStore, type ShopSection } from '../state/store';
 
 function useFlash() {
   const [flash, setFlash] = useState<string | null>(null);
@@ -26,7 +24,24 @@ function useFlash() {
 }
 
 export function ShopTab() {
-  const [section, setSection] = useState<Section>('army');
+  const view = useStore((s) => s.view);
+  const setView = useStore((s) => s.setView);
+  // The section lives in the view, so links (e.g. "New cards" after a win) can open it directly.
+  const section: ShopSection = (view.name === 'hub' && view.section) || 'army';
+  const focus = view.name === 'hub' ? view.focus : undefined;
+  const setSection = (s: ShopSection) => setView({ name: 'hub', tab: 'shop', section: s });
+
+  // Scroll to and highlight the item a link pointed at.
+  useEffect(() => {
+    if (!focus) return;
+    const el = document.querySelector<HTMLElement>(`[data-focus="${focus}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.remove('focus-flash');
+    void el.offsetWidth; // restart the animation
+    el.classList.add('focus-flash');
+  }, [section, focus]);
+
   return (
     <div className="shop">
       <nav className="segmented">
@@ -88,7 +103,7 @@ function PieceCard({ type, flash, onBought }: { type: PieceType; flash: boolean;
   const mercs = count(save.mercs, type);
   const rank = classRanks(save.xp)[type] ?? 0;
   return (
-    <article className={`panel piece-card ${unlocked ? '' : 'locked'} ${flash ? 'flash' : ''}`}>
+    <article className={`panel piece-card ${unlocked ? '' : 'locked'} ${flash ? 'flash' : ''}`} data-focus={`piece:${type}`}>
       <header>
         <PieceGlyph type={type} className="big" />
         <div>
@@ -152,7 +167,7 @@ function CardTile({ id, flash, onBought }: { id: CardId; flash: boolean; onBough
   const unlocked = isCleared(save.stages, def.unlockedBy);
   const owned = save.cards[id] ?? 0;
   return (
-    <article className={`game-card ${unlocked ? '' : 'locked'} ${flash ? 'flash' : ''} ${def.pre ? 'pre' : ''}`}>
+    <article className={`game-card ${unlocked ? '' : 'locked'} ${flash ? 'flash' : ''} ${def.pre ? 'pre' : ''}`} data-focus={`card:${id}`}>
       <div className="game-card-icon">{def.icon}</div>
       <b>{def.name}</b>
       <small>{def.desc}</small>
@@ -195,7 +210,7 @@ function SkinTile({ kind, skin }: { kind: 'piece' | 'board'; skin: Skin }) {
   const equipped = (kind === 'piece' ? save.cosmetics.piece : save.cosmetics.board) === skin.id;
   const region = REGIONS.find((r) => r.id === skin.earnedWorld);
   return (
-    <article className={`skin-tile ${equipped ? 'equipped' : ''} ${owned ? '' : 'locked'}`}>
+    <article className={`skin-tile ${equipped ? 'equipped' : ''} ${owned ? '' : 'locked'}`} data-focus={`skin:${kind}:${skin.id}`}>
       {kind === 'piece' ? (
         <div className="skin-preview" data-skin={skin.id}>
           <PieceGlyph type="knight" />

@@ -7,6 +7,7 @@ import { requestAiMove } from '../game/aiClient';
 import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, REGIONS, arenaStage, isCleared, nextStage } from '../game/campaign';
 import { CARDS, cardPlayable, playCard, validSquares, type CardId } from '../game/cards';
+import { PIECE_SKINS } from '../game/cosmetics';
 import { computeResult, lootFromFx, type BattleResult } from '../game/economy';
 import { PASS, applyMove, cloneBattle, enemyPostTurn, enemyPreTurn, genMoves, genUnitMoves, material } from '../game/engine';
 import { PIECES, PIECE_ORDER } from '../game/pieces';
@@ -504,27 +505,35 @@ function ResultModal({ final }: { final: Final }) {
         </div>
       )}
       {unlocked.map((t) => (
-        <button key={t} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop' })}>
+        <button key={t} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop', section: 'army', focus: `piece:${t}` })}>
           <PieceGlyph type={t} className="big" />
           <b>New: {PIECES[t].name}</b>
         </button>
       ))}
       {cardsUnlocked.length > 0 && (
-        <button className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop' })}>
+        <button className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop', section: 'cards', focus: `card:${cardsUnlocked[0]}` })}>
           <span className="big-icon">{cardsUnlocked.map((c) => CARDS[c].icon).join(' ')}</span>
           <b>New cards</b>
         </button>
       )}
       {hardUnlocked && (
-        <button className="unlock" onClick={home}>
+        <button
+          className="unlock"
+          onClick={() => {
+            // Open the campaign with this world already switched to Hard mode.
+            const { hardView } = useStore.getState();
+            useStore.setState({ hardView: { ...hardView, [stage.region]: true } });
+            home();
+          }}
+        >
           <span className="big-icon">🔥</span>
           <b>New: Hard mode</b>
         </button>
       )}
-      {skinsEarned.map((n) => (
-        <button key={n} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop' })}>
+      {skinsEarned.map((id) => (
+        <button key={id} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop', section: 'style', focus: `skin:piece:${id}` })}>
           <span className="big-icon">🎨</span>
-          <b>New skin: {n}</b>
+          <b>New skin: {PIECE_SKINS.find((s) => s.id === id)?.name ?? id}</b>
         </button>
       ))}
       {arenaUnlocked && (

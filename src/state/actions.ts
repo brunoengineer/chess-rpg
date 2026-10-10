@@ -162,7 +162,7 @@ export function finishBattle(stage: StageDef, result: BattleResult, captures: nu
       const key = skinKey('piece', skin.id);
       if (!s.cosmetics.owned.includes(key) && mainStars(s.stages, skin.earnedWorld) >= MAIN_STAGES * 3) {
         s.cosmetics.owned.push(key);
-        skinsEarned.push(skin.name);
+        skinsEarned.push(skin.id);
       }
     }
     s.active = null;
