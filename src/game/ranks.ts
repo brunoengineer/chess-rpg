@@ -18,10 +18,10 @@ export function levelInfo(xp: number): { level: number; rank: number; into: numb
 
 export const rankOf = (level: number) => Math.min(5, Math.floor(level / 10));
 
-/** Extra command points a ranked piece costs (+1 every two ranks). */
-export const rankCommand = (rank: number) => Math.floor(rank / 2);
+/** Extra command a ranked piece costs: proportional to its base cost (pawns never pay extra, a General Queen +5). */
+export const rankCommand = (type: PieceType, rank: number) => Math.floor((PIECES[type].command * rank) / 8);
 
-export const commandCost = (type: PieceType, rank = 0) => PIECES[type].command + rankCommand(rank);
+export const commandCost = (type: PieceType, rank = 0) => PIECES[type].command + rankCommand(type, rank);
 
 export interface Perk {
   name: string;

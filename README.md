@@ -23,8 +23,8 @@ saves through Firebase.
   surviving and winning. Every 10 levels it gains a rank (Sergeant, Lieutenant, Major, Colonel, General), and
   each rank unlocks a perk: new moves (for example the Knight's 2-square jump or the Knightrider), extra boss
   damage, Vault (jump over one piece) or Iron Will (survives the first capture). Pieces show their insignia and
-  level on the board. Each two ranks also cost +1 command.
-- **Enemy ranks:** enemies get the same perks. World 1 enemies are Recruits and World 5 enemies are Colonels.
+  level on the board. Higher ranks cost a little more command (pawns never do; a General Queen costs +3).
+- **Enemy ranks:** enemies get the same perks: Recruits in worlds 1–2, then one rank per world (World 5: Majors).
   Bonus stages are one rank higher.
 - **Hard mode:** after you beat a world's boss, a 🔥 toggle replays its 10 stages with enemies +2 ranks, sharper
   AI, and double rewards and loot.
@@ -41,7 +41,8 @@ saves through Firebase.
   (quake, fire breath).
 - **Move hints** for your pieces and enemy scouting. You can turn both off in Settings.
 - **Endless Arena:** generated battles with growing rewards, and a boss every 5 levels.
-- **Stars:** ★ for a win, ★★ if you lost at most one piece, ★★★ if you lost none (and used no cards).
+- **Stars:** ★ for a win, ★★ if you lost at most half of your army's value, ★★★ if you lost at most a quarter (and used
+  no cards). Value counts: losing pawns is cheap, losing a Queen is not.
 - Pawns that reach the last row become Queens for the rest of the battle.
 - Synthesized sound effects, animations, and a layout that works on phones.
 
@@ -59,6 +60,7 @@ saves through Firebase.
 npm install
 npm run dev        # http://localhost:5173
 npm test           # engine/AI/stage-data tests (vitest)
+npm run balance    # balance simulator: plays every stage with bots, writes sim-results/ (several minutes)
 npm run build      # typecheck + production build into dist/
 ```
 

@@ -37,14 +37,14 @@ const G = {
 
 export const PIECES: Record<PieceType, PieceDef> = {
   pawn: { type: 'pawn', name: 'Pawn', glyph: G.pawn, value: 1, command: 1, price: 20, mercPrice: 5, slides: [], leaps: [] },
-  knight: { type: 'knight', name: 'Knight', glyph: G.knight, value: 3, command: 3, price: 100, mercPrice: 25, slides: [], leaps: KNIGHT, unlockedBy: '1-4' },
-  bishop: { type: 'bishop', name: 'Bishop', glyph: G.bishop, value: 3, command: 3, price: 110, mercPrice: 28, slides: DIAG, leaps: [], unlockedBy: '1-10' },
-  warden: { type: 'warden', name: 'Warden', glyph: G.king, value: 3, command: 3, price: 120, mercPrice: 30, slides: [], leaps: [...ORTH, ...DIAG], unlockedBy: '2-5' },
-  rook: { type: 'rook', name: 'Rook', glyph: G.rook, value: 5, command: 5, price: 240, mercPrice: 60, slides: ORTH, leaps: [], unlockedBy: '2-10' },
-  queen: { type: 'queen', name: 'Queen', glyph: G.queen, value: 9, command: 9, price: 700, mercPrice: 175, slides: [...ORTH, ...DIAG], leaps: [], unlockedBy: '3-10' },
-  cardinal: { type: 'cardinal', name: 'Cardinal', glyph: G.bishop, badge: G.knight, value: 7, command: 7, price: 950, mercPrice: 240, slides: DIAG, leaps: KNIGHT, unlockedBy: '4-5' },
-  marshal: { type: 'marshal', name: 'Marshal', glyph: G.rook, badge: G.knight, value: 8, command: 8, price: 1150, mercPrice: 290, slides: ORTH, leaps: KNIGHT, unlockedBy: '4-10' },
-  amazon: { type: 'amazon', name: 'Amazon', glyph: G.queen, badge: G.knight, value: 12, command: 12, price: 2600, mercPrice: 650, slides: [...ORTH, ...DIAG], leaps: KNIGHT, unlockedBy: '5-6' },
+  knight: { type: 'knight', name: 'Knight', glyph: G.knight, value: 3, command: 2, price: 100, mercPrice: 25, slides: [], leaps: KNIGHT, unlockedBy: '1-4' },
+  bishop: { type: 'bishop', name: 'Bishop', glyph: G.bishop, value: 3, command: 2, price: 110, mercPrice: 28, slides: DIAG, leaps: [], unlockedBy: '1-10' },
+  warden: { type: 'warden', name: 'Warden', glyph: G.king, value: 3, command: 2, price: 120, mercPrice: 30, slides: [], leaps: [...ORTH, ...DIAG], unlockedBy: '2-5' },
+  rook: { type: 'rook', name: 'Rook', glyph: G.rook, value: 5, command: 3, price: 240, mercPrice: 60, slides: ORTH, leaps: [], unlockedBy: '2-10' },
+  queen: { type: 'queen', name: 'Queen', glyph: G.queen, value: 9, command: 6, price: 700, mercPrice: 175, slides: [...ORTH, ...DIAG], leaps: [], unlockedBy: '3-10' },
+  cardinal: { type: 'cardinal', name: 'Cardinal', glyph: G.bishop, badge: G.knight, value: 7, command: 5, price: 950, mercPrice: 240, slides: DIAG, leaps: KNIGHT, unlockedBy: '4-5' },
+  marshal: { type: 'marshal', name: 'Marshal', glyph: G.rook, badge: G.knight, value: 8, command: 5, price: 1150, mercPrice: 290, slides: ORTH, leaps: KNIGHT, unlockedBy: '4-10' },
+  amazon: { type: 'amazon', name: 'Amazon', glyph: G.queen, badge: G.knight, value: 12, command: 8, price: 2600, mercPrice: 650, slides: [...ORTH, ...DIAG], leaps: KNIGHT, unlockedBy: '5-6' },
 };
 
 export const PIECE_ORDER: PieceType[] = ['pawn', 'knight', 'bishop', 'warden', 'rook', 'queen', 'cardinal', 'marshal', 'amazon'];

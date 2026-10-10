@@ -17,6 +17,10 @@ export function lootFromFx(fx: FxEvent[], stage: StageDef, mult = 1): { coins: n
   return { coins: coins * mult, captures };
 }
 
+/** Max share of your deployed army's value you can lose and still get ★★★ / ★★. */
+export const STAR3_LOSS = 0.25;
+export const STAR2_LOSS = 0.5;
+
 export interface BattleResult {
   outcome: Outcome;
   win: boolean;
@@ -61,8 +65,15 @@ export function computeResult(
     (u.alive ? survivors : lost).push({ type, temp: !!u.temp });
   }
   const win = outcome.winner === 'P';
+  // Stars depend on the share of your army's value you lost (pawns are cheap, queens are not).
+  const value = (l: { type: PieceType }) => PIECES[l.type].value;
+  const deployedValue = [...lost, ...survivors].reduce((a, l) => a + value(l), 0) || 1;
+  const lostShare = lost.reduce((a, l) => a + value(l), 0) / deployedValue;
   let stars = 0;
-  if (win) stars = outcome.reason === 'points' || outcome.reason === 'time' || outcome.reason === 'deadlock' ? 1 : lost.length === 0 ? 3 : lost.length <= 1 ? 2 : 1;
+  if (win) {
+    if (outcome.reason === 'points' || outcome.reason === 'time' || outcome.reason === 'deadlock') stars = 1;
+    else stars = lostShare <= STAR3_LOSS ? 3 : lostShare <= STAR2_LOSS ? 2 : 1;
+  }
   const cardCapped = cardsUsed > 0 && stars > 2;
   if (cardsUsed > 0) stars = Math.min(stars, 2);
   const reward = win ? stage.reward : 0;

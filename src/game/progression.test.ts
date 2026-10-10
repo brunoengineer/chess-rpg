@@ -22,11 +22,12 @@ describe('levels and ranks', () => {
     expect(levelInfo(1e9)).toMatchObject({ level: 50, rank: 5 });
   });
 
-  it('ranked pieces cost more command (+1 every two ranks)', () => {
-    expect(commandCost('knight', 0)).toBe(3);
-    expect(commandCost('knight', 1)).toBe(3);
-    expect(commandCost('knight', 2)).toBe(4);
-    expect(commandCost('knight', 5)).toBe(5);
+  it('ranked pieces cost more command, in proportion to their base cost', () => {
+    expect(commandCost('pawn', 5)).toBe(1);
+    expect(commandCost('knight', 0)).toBe(2);
+    expect(commandCost('knight', 4)).toBe(3);
+    expect(commandCost('queen', 0)).toBe(6);
+    expect(commandCost('queen', 5)).toBe(9);
   });
 
   it('perks add movement: Sergeant knight jumps 2 straight', () => {
@@ -65,10 +66,10 @@ describe('levels and ranks', () => {
 
   it('enemies get the stage rank', () => {
     expect(STAGE_BY_ID['1-1'].enemyRank).toBe(0);
-    expect(STAGE_BY_ID['3-7'].enemyRank).toBe(2);
-    expect(STAGE_BY_ID['5-X2'].enemyRank).toBe(5);
+    expect(STAGE_BY_ID['3-7'].enemyRank).toBe(1);
+    expect(STAGE_BY_ID['5-X2'].enemyRank).toBe(4);
     const b = createBattle(STAGE_BY_ID['3-7'], []);
-    expect(b.units.every((u) => u.type === 'boss' || u.rank === 2)).toBe(true);
+    expect(b.units.every((u) => u.type === 'boss' || u.rank === 1)).toBe(true);
     expect(profile('pawn', 2).pawnDouble).toBe(true);
   });
 });
