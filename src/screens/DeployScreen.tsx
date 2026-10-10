@@ -85,7 +85,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
   const draftKey = `gq-draft-${player?.uid ?? 'guest'}-${stage.id}`;
   const draft = useMemo(() => readDraft(draftKey), [draftKey]);
   const [placements, setPlacements] = useState<Placement[]>(() =>
-    draft ? fits(draft.placements) : lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost),
+    draft ? fits(draft.placements) : lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost, { rankOf: (t) => ranks[t] ?? 0 }),
   );
   const ownedCards = stage.extra ? [] : CARD_ORDER.filter((c) => (save.cards[c] ?? 0) > 0);
   const [loadout, setLoadout] = useState<CardId[]>(() => (draft?.loadout ?? []).filter((c) => ownedCards.includes(c)).slice(0, save.cardSlots));
@@ -371,7 +371,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
             })}
           </div>
           <div className="deploy-actions">
-            <button className="btn btn-ghost btn-small" onClick={() => setPlacements(autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost))}>✨ Auto</button>
+            <button className="btn btn-ghost btn-small" onClick={() => setPlacements(autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost, { rankOf: (t) => ranks[t] ?? 0 }))}>✨ Auto</button>
             {lastFormation && <button className="btn btn-ghost btn-small" onClick={() => setPlacements(fits(lastFormation))}>↺ Last</button>}
             <button className="btn btn-ghost btn-small" onClick={() => setPlacements([])}>Clear</button>
           </div>

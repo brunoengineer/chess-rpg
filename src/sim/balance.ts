@@ -18,6 +18,9 @@ import type { AiParams, PieceType, StageDef } from '../game/types';
 
 export type Counts = Partial<Record<PieceType, number>>;
 
+/** Pawn screen size for Auto deploy in simulations (env SCREEN, default = the game's). */
+const SIM_SCREEN = process.env.SCREEN !== undefined ? Number(process.env.SCREEN) : undefined;
+
 export interface PlayerState {
   coins: number;
   leadership: number;
@@ -151,7 +154,7 @@ export function simulateStage(row: ExpectedRow, bot: AiParams, games: number, se
   const ranks = ranksOf(row.before.xp);
   const base = createBattle(s, []);
   const blocked = new Set(base.grid.flatMap((c, i) => (c !== 0 ? [i] : [])));
-  const placements = autoDeploy(s, row.before.army, {}, row.before.leadership, blocked, (t) => commandCost(t, ranks[t]));
+  const placements = autoDeploy(s, row.before.army, {}, row.before.leadership, blocked, (t) => commandCost(t, ranks[t]), { rankOf: (t) => ranks[t], screen: SIM_SCREEN });
   const res: SimResult = { wins: 0, games, stars: [], lostShare: [], plies: [], reasons: {} };
   const deployed = placements.reduce((a, p) => a + PIECES[p.type].value, 0);
   for (let g = 0; g < games; g++) {
@@ -198,12 +201,13 @@ export function report(world: number, games = 4): string {
     const ranks = ranksOf(row.before.xp);
     const base = createBattle(s, []);
     const blocked = new Set(base.grid.flatMap((c, i) => (c !== 0 ? [i] : [])));
-    const pl = autoDeploy(s, row.before.army, {}, row.before.leadership, blocked, (t) => commandCost(t, ranks[t]));
+    const pl = autoDeploy(s, row.before.army, {}, row.before.leadership, blocked, (t) => commandCost(t, ranks[t]), { rankOf: (t) => ranks[t], screen: SIM_SCREEN });
     const dv = pl.reduce((a, p) => a + PIECES[p.type].value, 0);
     const armyTxt = PIECE_ORDER.filter((t) => pl.some((p) => p.type === t))
       .map((t) => `${pl.filter((p) => p.type === t).length}${t[0]}${ranks[t] ? `r${ranks[t]}` : ''}`)
       .join(' ');
-    for (const [name, bot] of Object.entries(BOTS)) {
+    // env BOTS=casual limits the run to some bots (faster comparisons).
+    for (const [name, bot] of Object.entries(BOTS).filter(([n]) => !process.env.BOTS || process.env.BOTS.split(',').includes(n))) {
       const r = simulateStage(row, bot, games, s.region * 100 + s.id.length);
       const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
       lines.push(
