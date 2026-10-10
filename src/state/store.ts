@@ -27,6 +27,7 @@ interface AppStore {
   sync: 'local' | 'saving' | 'saved' | 'error';
   toasts: Toast[];
   settingsOpen: boolean;
+  tutorialOpen: boolean;
   authError: string | null;
   /** Worlds currently shown in Hard mode on the map. */
   hardView: Record<number, boolean>;
@@ -35,6 +36,7 @@ interface AppStore {
   update: (fn: (s: SaveData) => void) => void;
   toast: (text: string, icon?: string) => void;
   setSettingsOpen: (open: boolean) => void;
+  setTutorialOpen: (open: boolean) => void;
   playAsGuest: () => void;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -149,6 +151,7 @@ export const useStore = create<AppStore>((set, get) => {
     sync: 'local',
     toasts: [],
     settingsOpen: false,
+    tutorialOpen: false,
     authError: null,
     hardView: {},
     toggleHard: (region) => set({ hardView: { ...get().hardView, [region]: !get().hardView[region] } }),
@@ -170,6 +173,7 @@ export const useStore = create<AppStore>((set, get) => {
     },
 
     setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+    setTutorialOpen: (tutorialOpen) => set({ tutorialOpen }),
 
     playAsGuest: () => {
       localStorage.setItem(GUEST_FLAG, '1');

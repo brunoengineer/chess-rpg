@@ -42,7 +42,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ];
 
 export function TopBar() {
-  const { save, player, view, setView, sync, setSettingsOpen } = useStore();
+  const { save, player, view, setView, sync, setSettingsOpen, setTutorialOpen } = useStore();
   const tab = view.name === 'hub' ? view.tab : null;
   const syncIcon = player?.guest ? '💾' : sync === 'saving' ? '⏳' : sync === 'error' ? '⚠️' : '☁️';
   const syncTitle = player?.guest ? 'Guest: saved on this device only' : sync === 'saving' ? 'Saving…' : sync === 'error' ? 'Cloud save failed — will retry on next change' : 'Saved to the cloud';
@@ -71,6 +71,9 @@ export function TopBar() {
           <span className="sync" title={syncTitle}>
             {syncIcon}
           </span>
+          <button className="help-btn" onClick={() => setTutorialOpen(true)} title="How to play" aria-label="How to play">
+            ?
+          </button>
           <button className="avatar" onClick={() => setSettingsOpen(true)} title="Settings">
             {player?.photo ? <img src={player.photo} alt="" referrerPolicy="no-referrer" /> : <span>⚙️</span>}
           </button>

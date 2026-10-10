@@ -232,3 +232,66 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .deploy-head > .btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
   .deploy-head .stage-titles { text-align: center; padding: 0 68px; }
 }
+
+/* ───────────────────────── Tutorial ───────────────────────── */
+.help-btn {
+  width: 36px; height: 36px; border-radius: 50%; cursor: pointer; flex: none;
+  font: 800 1.05rem/1 var(--display); color: var(--gold);
+  background: rgba(246, 196, 83, 0.12); border: 2px solid rgba(246, 196, 83, 0.5);
+}
+.help-btn:hover { background: rgba(246, 196, 83, 0.22); }
+.tutorial { max-width: 420px; text-align: center; }
+.tut-body { touch-action: pan-y; user-select: none; }
+.tut-body h2 { margin: 14px 0 6px; }
+.tut-body p { margin: 0 auto; max-width: 300px; color: rgba(255, 255, 255, 0.85); min-height: 3em; }
+.tut-visual {
+  height: 190px; display: grid; place-items: center; border-radius: 16px; overflow: hidden; position: relative;
+  background: radial-gradient(circle at 50% 35%, rgba(246, 196, 83, 0.14), rgba(0, 0, 0, 0.35) 70%);
+  border: 1px solid var(--border);
+  animation: tutIn 0.35s ease-out;
+}
+@keyframes tutIn { from { opacity: 0; transform: translateX(16px); } }
+.tut-dots { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.tut-dots button { width: 8px; height: 8px; padding: 0; border: 0; border-radius: 99px; cursor: pointer; background: rgba(255, 255, 255, 0.25); transition: width 0.2s, background 0.2s; }
+.tut-dots button.on { width: 22px; background: var(--gold); }
+
+.tut-arrow { color: var(--gold); font-weight: 800; opacity: 0.8; }
+.tut-row, .tut-journey { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; padding: 0 10px; }
+.tut-journey .glyph { font-size: 2.6rem; animation: bob 2s ease-in-out infinite; }
+.tut-journey .glyph:nth-child(3) { animation-delay: 0.3s; }
+.tut-journey .glyph:nth-child(5) { animation-delay: 0.6s; }
+.tut-boss { font-size: 3rem; filter: drop-shadow(0 0 12px #ff5a3c); animation: bob 2.4s ease-in-out infinite; }
+.tut-item { display: grid; justify-items: center; gap: 2px; padding: 8px 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); }
+.tut-item .glyph { font-size: 2.2rem; }
+.tut-item small { font-weight: 700; color: var(--text); }
+.tut-emoji { font-size: 2.1rem; line-height: 1.05; }
+.tut-coins { font-weight: 800; color: #ffe08a; font-size: 1.1rem; }
+
+/* Deploy demo: a pawn travels from the tray to a glowing square, forever. */
+.tut-drag { position: relative; width: 200px; height: 170px; }
+.tut-board { position: absolute; top: 0; left: 20px; display: grid; grid-template-columns: repeat(4, 40px); border-radius: 6px; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4); }
+.tut-cell { width: 40px; height: 40px; position: relative; display: grid; place-items: center; }
+.tut-cell.light { background: #efe8c9; }
+.tut-cell.dark { background: #86a75f; }
+.tut-cell.deploy::before { content: ''; position: absolute; inset: 4px; border: 2px dashed rgba(255, 233, 150, 0.9); border-radius: 5px; background: rgba(255, 220, 110, 0.18); }
+.tut-cell .glyph { font-size: 1.9rem; }
+.tut-tray { position: absolute; bottom: 0; left: 75px; width: 50px; height: 42px; border-radius: 10px; display: grid; place-items: center; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(246, 196, 83, 0.6); }
+.tut-tray .glyph, .tut-ghost .glyph { font-size: 1.9rem; }
+.tut-ghost { position: absolute; left: 82px; top: 126px; animation: tutDrag 2.6s ease-in-out infinite; filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.5)); }
+.tut-finger { position: absolute; left: 96px; top: 140px; font-size: 1.4rem; animation: tutDrag 2.6s ease-in-out infinite; }
+@keyframes tutDrag {
+  0%, 15% { transform: translate(0, 0) scale(1); opacity: 1; }
+  60%, 80% { transform: translate(-22px, -46px) scale(1.12); opacity: 1; }
+  95%, 100% { transform: translate(-22px, -46px) scale(1); opacity: 0; }
+}
+
+.tut-rank { display: grid; gap: 18px; justify-items: center; }
+.tut-levelup { display: flex; align-items: center; gap: 22px; }
+.tut-levelup .glyph { font-size: 3rem; }
+.tut-levelup .glyph:last-child { animation: starPop 0.6s 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) backwards; }
+.tut-insignias { display: flex; gap: 10px; }
+.tut-insignias .insignia { width: 26px; height: 19px; }
+.tut-stars { display: grid; gap: 8px; }
+.tut-stars-row { display: flex; align-items: center; gap: 14px; }
+.tut-stars-row .stars { font-size: 1.6rem; min-width: 92px; justify-content: flex-start; }
+.tut-stars-row small { font-weight: 700; color: var(--text); font-size: 0.95rem; }

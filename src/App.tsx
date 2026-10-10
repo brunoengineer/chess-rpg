@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { SettingsModal, Toasts, TopBar } from './components/Chrome';
+import { Tutorial } from './components/Tutorial';
 import { ArenaTab } from './screens/ArenaTab';
 import { BarracksTab } from './screens/BarracksTab';
 import { BattleScreen } from './screens/BattleScreen';
@@ -13,6 +15,13 @@ export function App() {
   const view = useStore((s) => s.view);
   const settingsOpen = useStore((s) => s.settingsOpen);
   const cosmetics = useStore((s) => s.save.cosmetics);
+  const tutorialOpen = useStore((s) => s.tutorialOpen);
+  const tutorialSeen = useStore((s) => s.save.tutorialSeen);
+
+  // First time in the game: show the tutorial once (never on top of a battle in progress).
+  useEffect(() => {
+    if (phase === 'game' && !tutorialSeen && view.name !== 'battle') useStore.getState().setTutorialOpen(true);
+  }, [phase, tutorialSeen, view.name]);
 
   if (phase === 'boot') {
     return (
@@ -35,6 +44,7 @@ export function App() {
         {view.name === 'battle' && <BattleScreen />}
       </main>
       {settingsOpen && <SettingsModal />}
+      {tutorialOpen && <Tutorial />}
       <Toasts />
     </div>
   );

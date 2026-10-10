@@ -50,6 +50,8 @@ export interface SaveData {
   cosmetics: { owned: string[]; piece: string; board: string };
   settings: Settings;
   active: ActiveBattle | null;
+  /** The how-to-play tutorial was shown (it opens automatically only once). */
+  tutorialSeen: boolean;
   updatedAt: number;
 }
 
@@ -70,6 +72,7 @@ export function defaultSave(): SaveData {
     cosmetics: { owned: [], piece: 'classic', board: 'realm' },
     settings: { showMoves: true, showEnemyMoves: true, sound: true, fastAnim: false },
     active: null,
+    tutorialSeen: false,
     updatedAt: 0,
   };
 }
@@ -100,6 +103,7 @@ export function normalizeSave(raw: unknown): SaveData {
     cardSlots: s.cardSlots ?? d.cardSlots,
     cosmetics: { ...d.cosmetics, ...s.cosmetics },
     active: s.active ?? null,
+    tutorialSeen: s.tutorialSeen ?? false,
     v: 1,
   };
 }

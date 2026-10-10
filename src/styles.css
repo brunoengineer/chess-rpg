@@ -190,6 +190,8 @@ button { font: inherit; color: inherit; }
 @media (max-width: 760px) {
   .tabs, .brand-name { display: none; }
   .topbar { padding: 8px 12px; }
+  /* Tabs are hidden here, so push coins, save, help and settings to the right edge. */
+  .tabs + .topbar-right { margin-left: auto; }
   .pill { padding: 5px 10px; font-size: 0.9rem; }
   .bottom-nav {
     display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
