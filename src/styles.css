@@ -305,8 +305,8 @@ button.pill-link:disabled { cursor: default; opacity: 1; }
 .piece-desc { margin: 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.78); flex: 1; }
 .owned { margin: 0; font-size: 0.85rem; color: var(--muted); }
 .owned b { color: var(--text); }
-.buy-row { display: flex; gap: 8px; }
-.buy-row .btn { flex: 1; padding: 9px 10px; font-size: 0.88rem; }
+.buy-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.buy-row .btn { flex: 1 1 auto; padding: 9px 10px; font-size: 0.88rem; }
 .lock-note { margin: 0; font-size: 0.88rem; color: var(--muted); background: rgba(0, 0, 0, 0.25); padding: 9px 12px; border-radius: 10px; }
 .flash { animation: flash 0.5s; }
 
