@@ -7,10 +7,11 @@ import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, REGIONS, isCleared } from '../game/campaign';
 import { CARDS, CARD_ORDER, type CardId } from '../game/cards';
 import { createBattle, reachSquares } from '../game/engine';
-import { PIECES, PIECE_ORDER } from '../game/pieces';
-import { RANKS, commandCost, levelInfo } from '../game/ranks';
+import { PIECE_ORDER } from '../game/pieces';
+import { commandCost, levelInfo } from '../game/ranks';
 import type { PieceType, Placement, StageDef } from '../game/types';
 import { autoDeploy, deploySquares, type Cost } from '../game/deploy';
+import { tNow, useT } from '../i18n';
 import { startBattle } from '../state/actions';
 import { classRanks, count, type Counts } from '../state/save';
 import { useStore } from '../state/store';
@@ -60,6 +61,7 @@ function writeDraft(key: string, d: Draft | null) {
 
 export function DeployScreen({ stage }: { stage: StageDef }) {
   const { save, setView, player } = useStore();
+  const t = useT();
   const ranks = useMemo(() => classRanks(save.xp), [save.xp]);
   const levels = useMemo(() => Object.fromEntries(PIECE_ORDER.map((t) => [t, levelInfo(save.xp[t] ?? 0).level])), [save.xp]);
   const cost: Cost = (t) => commandCost(t, ranks[t] ?? 0);
@@ -85,7 +87,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
   const draftKey = `gq-draft-${player?.uid ?? 'guest'}-${stage.id}`;
   const draft = useMemo(() => readDraft(draftKey), [draftKey]);
   const [placements, setPlacements] = useState<Placement[]>(() =>
-    draft ? fits(draft.placements) : lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost, { rankOf: (t) => ranks[t] ?? 0 }),
+    draft ? fits(draft.placements) : lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost, { rankOf: (k) => ranks[k] ?? 0 }),
   );
   const ownedCards = stage.extra ? [] : CARD_ORDER.filter((c) => (save.cards[c] ?? 0) > 0);
   const [loadout, setLoadout] = useState<CardId[]>(() => (draft?.loadout ?? []).filter((c) => ownedCards.includes(c)).slice(0, save.cardSlots));
@@ -190,7 +192,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     suppressClick.current = true;
     setTimeout(() => (suppressClick.current = false), 300);
     const plan = planDrop(d.src, cellAt(e.clientX, e.clientY));
-    if (plan === 'leadership') useStore.getState().toast('Not enough leadership', '👑');
+    if (plan === 'leadership') useStore.getState().toast(tNow().toast.notEnoughLeadership, '👑');
     else if (plan) {
       setPlacements(plan);
       sfx.move();
@@ -244,7 +246,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     if (!zone.has(i) || !tray) return;
     if (remaining(tray) <= 0) return;
     if (used + cost(tray.type) > save.leadership) {
-      useStore.getState().toast('Not enough leadership', '👑');
+      useStore.getState().toast(tNow().toast.notEnoughLeadership, '👑');
       return;
     }
     setPlacements([...placements, { ...tray, x, y }]);
@@ -259,23 +261,23 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
 
   const infoChips = (
     <>
-      <span className="chip" title="Board">📐 {stage.w}×{stage.h}</span>
-      <span className="chip" title="Turn limit">⏱ {stage.maxTurns}</span>
-      <span className="chip" title="Enemy skill">{'💀'.repeat(difficulty(stage))}</span>
-      <span className="chip" title={firstClear ? 'Reward (doubled on first win)' : 'Reward'}>🪙 {stage.reward}{firstClear && <b className="bonus">×2</b>}</span>
-      <span className="chip" title="Loot multiplier">💰 ×{stage.lootMult}</span>
-      {stage.hard && <span className="chip hard-chip">🔥 Hard</span>}
+      <span className="chip" title={t.deploy.board}>📐 {stage.w}×{stage.h}</span>
+      <span className="chip" title={t.deploy.turnLimit}>⏱ {stage.maxTurns}</span>
+      <span className="chip" title={t.deploy.enemySkill}>{'💀'.repeat(difficulty(stage))}</span>
+      <span className="chip" title={firstClear ? t.deploy.rewardFirst : t.deploy.reward}>🪙 {stage.reward}{firstClear && <b className="bonus">×2</b>}</span>
+      <span className="chip" title={t.deploy.lootMult}>💰 ×{stage.lootMult}</span>
+      {stage.hard && <span className="chip hard-chip">{t.deploy.hard}</span>}
       {(stage.enemyRank ?? 0) > 0 && (
-        <span className="chip" title="Enemy rank">
-          <Insignia rank={stage.enemyRank!} /> {RANKS[stage.enemyRank!]}
+        <span className="chip" title={t.deploy.enemyRank}>
+          <Insignia rank={stage.enemyRank!} /> {t.rank(stage.enemyRank!)}
         </span>
       )}
-      {stage.extra && <span className="chip" title="No cards on bonus stages">🚫🃏</span>}
+      {stage.extra && <span className="chip" title={t.deploy.noCards}>🚫🃏</span>}
     </>
   );
   const scoutChip = scoutUnit && scoutUnit.type !== 'boss' && (
     <span className="chip scout-chip">
-      <PieceGlyph type={scoutUnit.type} side="E" rank={scoutUnit.rank} /> {PIECES[scoutUnit.type].name}
+      <PieceGlyph type={scoutUnit.type} side="E" rank={scoutUnit.rank} /> {t.piece(scoutUnit.type)}
     </span>
   );
 
@@ -283,18 +285,18 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     <div className="deploy screen-split">
       <div className="board-col">
         <div className="screen-head deploy-head">
-          <button className="btn btn-ghost btn-small" onClick={back}>← Back</button>
+          <button className="btn btn-ghost btn-small" onClick={back}>{t.deploy.back}</button>
           <div className="stage-titles">
-            <small>{stage.isArena ? theme.name : `${theme.icon} ${theme.name} · ${stage.id}`}</small>
-            <h2>{stage.name}</h2>
+            <small>{stage.isArena ? t.region(theme) : `${theme.icon} ${t.region(theme)} · ${stage.id}`}</small>
+            <h2>{t.stage(stage)}</h2>
           </div>
         </div>
         {/* Mobile: stage info sits between the titles and the board. */}
         <div className="stage-strip only-mobile">
           {infoChips}
           {boss && (
-            <span className="chip boss-chip" title={boss.moveText} style={{ ['--aura' as string]: boss.aura }}>
-              <BossFigure kind={boss.kind} className="inline" /> {boss.name} · ❤️ {stage.boss!.hp ?? boss.hp}
+            <span className="chip boss-chip" title={t.bossMove(boss.kind)} style={{ ['--aura' as string]: boss.aura }}>
+              <BossFigure kind={boss.kind} className="inline" /> {t.bossName(boss.kind)} · ❤️ {stage.boss!.hp ?? boss.hp}
             </span>
           )}
           {scoutChip}
@@ -329,8 +331,8 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
               <div className="boss-brief-head">
                 <BossFigure kind={boss.kind} className="brief" />
                 <div>
-                  <b>{boss.name}</b>
-                  <small>❤️ {stage.boss!.hp ?? boss.hp} · {boss.moveText}</small>
+                  <b>{t.bossName(boss.kind)}</b>
+                  <small>❤️ {stage.boss!.hp ?? boss.hp} · {t.bossMove(boss.kind)}</small>
                 </div>
               </div>
             </div>
@@ -340,7 +342,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
 
         <section className="panel tray-panel">
           <div className="command">
-            <span title="Command points">👑</span>
+            <span title={t.deploy.commandPoints}>👑</span>
             <div className="command-bar">
               <i style={{ width: `${Math.min(100, (used / save.leadership) * 100)}%` }} />
             </div>
@@ -361,7 +363,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
                     setTray(active ? null : it);
                     sfx.select();
                   }}
-                  title={`${PIECES[it.type].name}${it.temp ? ' (mercenary)' : ''}`}
+                  title={`${t.piece(it.type)}${it.temp ? ` ${t.deploy.mercenary}` : ''}`}
                 >
                   <PieceGlyph type={it.type} temp={it.temp} rank={ranks[it.type]} />
                   <span className="tray-count">×{left}</span>
@@ -371,15 +373,15 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
             })}
           </div>
           <div className="deploy-actions">
-            <button className="btn btn-ghost btn-small" onClick={() => setPlacements(autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost, { rankOf: (t) => ranks[t] ?? 0 }))}>✨ Auto</button>
-            {lastFormation && <button className="btn btn-ghost btn-small" onClick={() => setPlacements(fits(lastFormation))}>↺ Last</button>}
-            <button className="btn btn-ghost btn-small" onClick={() => setPlacements([])}>Clear</button>
+            <button className="btn btn-ghost btn-small" onClick={() => setPlacements(autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost, { rankOf: (k) => ranks[k] ?? 0 }))}>{t.deploy.auto}</button>
+            {lastFormation && <button className="btn btn-ghost btn-small" onClick={() => setPlacements(fits(lastFormation))}>{t.deploy.last}</button>}
+            <button className="btn btn-ghost btn-small" onClick={() => setPlacements([])}>{t.deploy.clear}</button>
           </div>
           {ownedCards.length > 0 && (
             <div className="loadout">
-              <span className="loadout-label" title="Cards for this battle">🃏 {loadout.length}/{save.cardSlots}</span>
+              <span className="loadout-label" title={t.deploy.cardsForBattle}>🃏 {loadout.length}/{save.cardSlots}</span>
               {ownedCards.map((c) => (
-                <button key={c} className={`loadout-card ${loadout.includes(c) ? 'active' : ''}`} onClick={() => toggleCard(c)} title={`${CARDS[c].name}: ${CARDS[c].desc}`}>
+                <button key={c} className={`loadout-card ${loadout.includes(c) ? 'active' : ''}`} onClick={() => toggleCard(c)} title={`${t.cardName(c)}: ${t.cardDesc(c)}`}>
                   {CARDS[c].icon}
                   <small>×{save.cards[c]}</small>
                 </button>
@@ -387,7 +389,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
             </div>
           )}
           <button className="btn btn-primary btn-lg start-btn" disabled={!placements.length || !!save.active} onClick={fight}>
-            ⚔️ Fight
+            {t.deploy.fight}
           </button>
         </section>
       </aside>

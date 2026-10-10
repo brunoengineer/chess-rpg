@@ -18,6 +18,11 @@ export function App() {
   const cosmetics = useStore((s) => s.save.cosmetics);
   const tutorialOpen = useStore((s) => s.tutorialOpen);
   const tutorialSeen = useStore((s) => s.save.tutorialSeen);
+  const lang = useStore((s) => s.lang);
+
+  useEffect(() => {
+    document.documentElement.lang = lang === 'pt' ? 'pt-BR' : 'en';
+  }, [lang]);
 
   // First time in the game: show the tutorial once (never on top of a battle in progress).
   useEffect(() => {

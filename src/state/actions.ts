@@ -7,6 +7,7 @@ import { PIECES } from '../game/pieces';
 import { totalStars } from '../game/ladder';
 import { levelInfo } from '../game/ranks';
 import type { PieceType, Placement, StageDef } from '../game/types';
+import { tNow } from '../i18n';
 import { syncLadder } from './leaderboard';
 import { addCount, classRanks } from './save';
 import { useStore } from './store';
@@ -15,7 +16,7 @@ const st = () => useStore.getState();
 
 function spend(price: number): boolean {
   if (st().save.coins < price) {
-    st().toast('Not enough coins', '🪙');
+    st().toast(tNow().toast.notEnoughCoins, '🪙');
     return false;
   }
   return true;

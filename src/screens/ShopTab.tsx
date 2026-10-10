@@ -11,6 +11,7 @@ import { profile } from '../game/ranks';
 import type { PieceType } from '../game/types';
 import { buyCard, buyCardSlot, buyLeadership, buyPiece, buySkin, equipSkin } from '../state/actions';
 import { classRanks, count } from '../state/save';
+import { useT } from '../i18n';
 import { useStore, type ShopSection } from '../state/store';
 
 function useFlash() {
@@ -24,6 +25,7 @@ function useFlash() {
 }
 
 export function ShopTab() {
+  const t = useT();
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   // The section lives in the view, so links (e.g. "New cards" after a win) can open it directly.
@@ -47,13 +49,13 @@ export function ShopTab() {
       <nav className="segmented">
         {(
           [
-            ['army', '♞', 'Army'],
-            ['cards', '🃏', 'Cards'],
-            ['style', '🎨', 'Style'],
+            ['army', '♞'],
+            ['cards', '🃏'],
+            ['style', '🎨'],
           ] as const
-        ).map(([id, icon, label]) => (
+        ).map(([id, icon]) => (
           <button key={id} className={section === id ? 'active' : ''} onClick={() => setSection(id)}>
-            {icon} {label}
+            {icon} {t.shop[id]}
           </button>
         ))}
       </nav>
@@ -68,21 +70,22 @@ export function ShopTab() {
 
 function ArmySection() {
   const save = useStore((s) => s.save);
+  const t = useT();
   const { flash, bump } = useFlash();
   const lCost = leadershipCost(save.leadership);
   const maxed = save.leadership >= MAX_LEADERSHIP;
   return (
     <>
-      <section className={`panel leadership-card ${flash === 'lead' ? 'flash' : ''}`} title="Command points for deploying pieces">
+      <section className={`panel leadership-card ${flash === 'lead' ? 'flash' : ''}`} title={t.shop.leadershipTitle}>
         <div className="lead-icon">👑</div>
         <div className="lead-body">
-          <h3>Leadership <span className="lead-level">{save.leadership}</span></h3>
+          <h3>{t.shop.leadership} <span className="lead-level">{save.leadership}</span></h3>
           <div className="lead-bar">
             <i style={{ width: `${(save.leadership / MAX_LEADERSHIP) * 100}%` }} />
           </div>
         </div>
         <button className="btn btn-primary" disabled={maxed || save.coins < lCost} onClick={() => buyLeadership() && bump('lead')}>
-          {maxed ? 'Max' : <>+1 · 🪙 {lCost}</>}
+          {maxed ? t.shop.max : <>+1 · 🪙 {lCost}</>}
         </button>
       </section>
       <div className="shop-grid">
@@ -96,6 +99,7 @@ function ArmySection() {
 
 function PieceCard({ type, flash, onBought }: { type: PieceType; flash: boolean; onBought: () => void }) {
   const save = useStore((s) => s.save);
+  const t = useT();
   const def = PIECES[type];
   const unlocked = isPieceUnlocked(save.stages, type);
   const req = def.unlockedBy ? STAGE_BY_ID[def.unlockedBy] : null;
@@ -107,27 +111,27 @@ function PieceCard({ type, flash, onBought }: { type: PieceType; flash: boolean;
       <header>
         <PieceGlyph type={type} className="big" />
         <div>
-          <h3>{def.name}</h3>
+          <h3>{t.piece(type)}</h3>
           <div className="chips">
-            <span className="chip" title="Command cost">👑 {def.command}</span>
-            <span className="chip" title="Boss damage">⚔ {bossDamage(type) + profile(type, rank).bossDmg}</span>
-            {owned > 0 && <span className="chip" title="Owned">🛡️ {owned}</span>}
-            {mercs > 0 && <span className="chip" title="Mercenaries">⏳ {mercs}</span>}
+            <span className="chip" title={t.shop.commandCost}>👑 {def.command}</span>
+            <span className="chip" title={t.shop.bossDamage}>⚔ {bossDamage(type) + profile(type, rank).bossDmg}</span>
+            {owned > 0 && <span className="chip" title={t.shop.owned}>🛡️ {owned}</span>}
+            {mercs > 0 && <span className="chip" title={t.shop.mercs}>⏳ {mercs}</span>}
           </div>
         </div>
       </header>
       <MoveDiagram type={type} rank={rank} />
       {unlocked ? (
         <div className="buy-row">
-          <button className="btn btn-primary" disabled={save.coins < def.price} onClick={() => buyPiece(type, false) && onBought()} title="Yours forever">
-            Buy · 🪙 {def.price}
+          <button className="btn btn-primary" disabled={save.coins < def.price} onClick={() => buyPiece(type, false) && onBought()} title={t.shop.yoursForever}>
+            {t.shop.buy} · 🪙 {def.price}
           </button>
-          <button className="btn btn-ghost" disabled={save.coins < def.mercPrice} onClick={() => buyPiece(type, true) && onBought()} title="One battle only">
-            ⏳ Hire · 🪙 {def.mercPrice}
+          <button className="btn btn-ghost" disabled={save.coins < def.mercPrice} onClick={() => buyPiece(type, true) && onBought()} title={t.shop.oneBattle}>
+            ⏳ {t.shop.hire} · 🪙 {def.mercPrice}
           </button>
         </div>
       ) : (
-        <p className="lock-note">🔒 Clear {req?.id}</p>
+        <p className="lock-note">🔒 {t.shop.clear(req?.id ?? '')}</p>
       )}
     </article>
   );
@@ -137,6 +141,7 @@ function PieceCard({ type, flash, onBought }: { type: PieceType; flash: boolean;
 
 function CardsSection() {
   const save = useStore((s) => s.save);
+  const t = useT();
   const { flash, bump } = useFlash();
   const maxed = save.cardSlots >= MAX_CARD_SLOTS;
   const slotPrice = cardSlotCost(save.cardSlots);
@@ -145,11 +150,11 @@ function CardsSection() {
       <section className={`panel leadership-card ${flash === 'slot' ? 'flash' : ''}`}>
         <div className="lead-icon">🃏</div>
         <div className="lead-body">
-          <h3>Card slots <span className="lead-level">{save.cardSlots}</span></h3>
-          <p className="muted small">Cards per battle · one per turn · max ★★</p>
+          <h3>{t.shop.cardSlots} <span className="lead-level">{save.cardSlots}</span></h3>
+          <p className="muted small">{t.shop.cardRules}</p>
         </div>
         <button className="btn btn-primary" disabled={maxed || save.coins < slotPrice} onClick={() => buyCardSlot() && bump('slot')}>
-          {maxed ? 'Max' : <>+1 · 🪙 {slotPrice.toLocaleString()}</>}
+          {maxed ? t.shop.max : <>+1 · 🪙 {slotPrice.toLocaleString()}</>}
         </button>
       </section>
       <div className="card-grid">
@@ -163,14 +168,15 @@ function CardsSection() {
 
 function CardTile({ id, flash, onBought }: { id: CardId; flash: boolean; onBought: () => void }) {
   const save = useStore((s) => s.save);
+  const t = useT();
   const def = CARDS[id];
   const unlocked = isCleared(save.stages, def.unlockedBy);
   const owned = save.cards[id] ?? 0;
   return (
     <article className={`game-card ${unlocked ? '' : 'locked'} ${flash ? 'flash' : ''} ${def.pre ? 'pre' : ''}`} data-focus={`card:${id}`}>
       <div className="game-card-icon">{def.icon}</div>
-      <b>{def.name}</b>
-      <small>{def.desc}</small>
+      <b>{t.cardName(id)}</b>
+      <small>{t.cardDesc(id)}</small>
       {owned > 0 && <span className="game-card-count">×{owned}</span>}
       {unlocked ? (
         <button className="btn btn-primary btn-small" disabled={save.coins < def.price} onClick={() => buyCard(id) && onBought()}>
@@ -186,15 +192,16 @@ function CardTile({ id, flash, onBought }: { id: CardId; flash: boolean; onBough
 /* ---------------- Style ---------------- */
 
 function StyleSection() {
+  const t = useT();
   return (
     <>
-      <h3 className="section-title">Pieces</h3>
+      <h3 className="section-title">{t.shop.pieces}</h3>
       <div className="skin-grid">
         {PIECE_SKINS.map((s) => (
           <SkinTile key={s.id} kind="piece" skin={s} />
         ))}
       </div>
-      <h3 className="section-title">Board</h3>
+      <h3 className="section-title">{t.shop.board}</h3>
       <div className="skin-grid">
         {BOARD_SKINS.map((s) => (
           <SkinTile key={s.id} kind="board" skin={s} />
@@ -206,6 +213,7 @@ function StyleSection() {
 
 function SkinTile({ kind, skin }: { kind: 'piece' | 'board'; skin: Skin }) {
   const save = useStore((s) => s.save);
+  const t = useT();
   const owned = skin.price === 0 && !skin.earnedWorld ? true : save.cosmetics.owned.includes(skinKey(kind, skin.id));
   const equipped = (kind === 'piece' ? save.cosmetics.piece : save.cosmetics.board) === skin.id;
   const region = REGIONS.find((r) => r.id === skin.earnedWorld);
@@ -224,13 +232,13 @@ function SkinTile({ kind, skin }: { kind: 'piece' | 'board'; skin: Skin }) {
           ))}
         </div>
       )}
-      <b>{skin.name}</b>
+      <b>{t.skin(kind, skin.id)}</b>
       {equipped ? (
         <span className="equipped-tag">✓</span>
       ) : owned ? (
-        <button className="btn btn-ghost btn-small" onClick={() => equipSkin(kind, skin.id)}>Use</button>
+        <button className="btn btn-ghost btn-small" onClick={() => equipSkin(kind, skin.id)}>{t.shop.use}</button>
       ) : skin.earnedWorld ? (
-        <span className="lock-note" title={`All 30 stars in ${region?.name}`}>★30 {region?.icon}</span>
+        <span className="lock-note" title={t.shop.earnedIn(region ? t.region(region) : '')}>★30 {region?.icon}</span>
       ) : (
         <button className="btn btn-primary btn-small" disabled={save.coins < skin.price} onClick={() => buySkin(kind, skin.id) && sfx.buy()}>
           🪙 {skin.price.toLocaleString()}

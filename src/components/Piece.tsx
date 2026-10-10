@@ -1,7 +1,7 @@
 import { BOSSES } from '../game/bosses';
 import { BossFigure } from './BossFigure';
 import { PIECES } from '../game/pieces';
-import { RANKS } from '../game/ranks';
+import { useT } from '../i18n';
 import type { BossKind, PieceType, Side } from '../game/types';
 
 interface GlyphProps {
@@ -19,6 +19,7 @@ interface GlyphProps {
 
 /** A chess glyph colored by side (and skin), with badges for fairy pieces, mercenaries, ranks and effects. */
 export function PieceGlyph({ type, side = 'P', temp, promoted, level, rank = 0, shield, frozen, className = '' }: GlyphProps) {
+  const t = useT();
   const def = PIECES[type];
   const showTag = (level ?? 0) > 0 || rank > 0;
   return (
@@ -26,11 +27,11 @@ export function PieceGlyph({ type, side = 'P', temp, promoted, level, rank = 0, 
       <span className="glyph-main">{def.glyph}</span>
       {def.badge && <span className="glyph-badge">{def.badge}</span>}
       {promoted && <span className="glyph-crown">✦</span>}
-      {temp && <span className="glyph-temp" title="Mercenary">⏳</span>}
-      {shield && <span className="glyph-shield" title="Shield">🛡️</span>}
+      {temp && <span className="glyph-temp" title={t.glyph.mercenary}>⏳</span>}
+      {shield && <span className="glyph-shield" title={t.glyph.shield}>🛡️</span>}
       {frozen && <span className="glyph-frozen">❄️</span>}
       {showTag && (
-        <span className="glyph-tag" title={RANKS[rank]}>
+        <span className="glyph-tag" title={t.rank(rank)}>
           {rank > 0 && <Insignia rank={rank} />}
           {level !== undefined && level > 0 && <span>{level}</span>}
         </span>
@@ -43,9 +44,10 @@ const STAR = 'M7 0.2 8.18 3.38 11.57 3.52 8.9 5.62 9.82 8.88 7 7 4.18 8.88 5.1 5
 
 /** Small military insignia: chevrons, bar, diamond, star, two stars. */
 export function Insignia({ rank }: { rank: number }) {
+  const t = useT();
   const gold = '#ffd36b', silver = '#dfe6f0';
   return (
-    <svg className="insignia" viewBox="0 0 14 10" aria-label={RANKS[rank]}>
+    <svg className="insignia" viewBox="0 0 14 10" aria-label={t.rank(rank)}>
       {rank === 1 && (
         <g fill="none" stroke={gold} strokeWidth="1.8" strokeLinejoin="round">
           <path d="M2 4.5 7 1.5 12 4.5" />

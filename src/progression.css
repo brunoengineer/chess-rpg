@@ -419,3 +419,10 @@ button.class-row:active { transform: scale(0.99); }
   .podium-glyph { font-size: 2.1rem; }
   .podium-slot.p1 .podium-glyph { font-size: 2.6rem; }
 }
+
+/* ───────────────────────── Language switch ───────────────────────── */
+.lang-switch { display: flex; gap: 4px; padding: 4px; margin: 4px 0 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); }
+.lang-switch button { flex: 1; border: 0; padding: 7px 10px; border-radius: 9px; cursor: pointer; background: none; color: var(--muted); font: 700 0.85rem Inter, sans-serif; }
+.lang-switch button.active { color: var(--text); background: rgba(246, 196, 83, 0.16); box-shadow: inset 0 0 0 1px rgba(246, 196, 83, 0.4); }
+.lang-switch.small-switch { width: fit-content; margin: 8px auto 0; }
+.lang-switch.small-switch button { flex: none; padding: 5px 12px; font-size: 0.78rem; }

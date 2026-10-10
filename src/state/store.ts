@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { StageDef } from '../game/types';
 import { firebaseEnabled, loadCloudSave, signInWithGoogle, signOutUser, watchAuth, writeCloudSave } from './firebase';
+import { bundle, detectLang, rememberLang, type Lang } from '../i18n/bundles';
 import { HOME, clearHash, hashToView, initialView, writeHash } from './route';
 import { chooseAccountSave, defaultSave, normalizeSave, type SaveData } from './save';
 
@@ -36,6 +37,9 @@ interface AppStore {
   settingsOpen: boolean;
   tutorialOpen: boolean;
   authError: string | null;
+  /** UI language (per device, remembered in localStorage). */
+  lang: Lang;
+  setLang: (lang: Lang) => void;
   /** Worlds currently shown in Hard mode on the map. */
   hardView: Record<number, boolean>;
   toggleHard: (region: number) => void;
@@ -157,7 +161,7 @@ export const useStore = create<AppStore>((set, get) => {
       // We can't tell whether this account already has progress in the cloud: starting fresh would
       // overwrite it on the next save, so stop and let the player retry.
       await signOutUser();
-      set({ phase: 'login', player: null, authError: "Couldn't load your cloud save. Check your connection and try again." });
+      set({ phase: 'login', player: null, authError: bundle(get().lang).auth.cloudLoad });
       return;
     }
     const save = choice.save;
@@ -201,6 +205,11 @@ export const useStore = create<AppStore>((set, get) => {
     tutorialOpen: false,
     authError: null,
     hardView: readHardView(),
+    lang: detectLang(),
+    setLang: (lang) => {
+      rememberLang(lang);
+      set({ lang });
+    },
     toggleHard: (region) => get().setHardView(region, !get().hardView[region]),
     setHardView: (region, on) => {
       const hardView = { ...get().hardView, [region]: on };
@@ -242,14 +251,14 @@ export const useStore = create<AppStore>((set, get) => {
 
     signIn: async () => {
       if (!firebaseEnabled) {
-        set({ authError: 'Google sign-in is not configured yet. See README → Firebase setup.' });
+        set({ authError: bundle(get().lang).auth.notConfigured });
         return;
       }
       try {
         set({ authError: null });
         await signInWithGoogle();
       } catch (e) {
-        set({ authError: (e as Error).message ?? 'Sign-in failed' });
+        set({ authError: (e as Error).message ?? bundle(get().lang).auth.failed });
       }
     },
 

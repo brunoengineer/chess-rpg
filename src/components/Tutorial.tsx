@@ -1,15 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { RANKS } from '../game/ranks';
+import { useT } from '../i18n';
 import { useStore } from '../state/store';
 import { Modal } from './Modal';
 import { BossFigure } from './BossFigure';
 import { Insignia, PieceGlyph } from './Piece';
 
-interface Step {
-  title: string;
-  text: string;
-  visual: ReactNode;
-}
 
 /* ---------------- Visuals ---------------- */
 
@@ -50,21 +45,22 @@ function DragDemo() {
 }
 
 function ShopDemo() {
+  const t = useT();
   return (
     <div className="tut-row">
       <span className="tut-coins">🪙 120</span>
       <span className="tut-arrow">→</span>
       <span className="tut-item">
         <PieceGlyph type="knight" />
-        <small>Pieces</small>
+        <small>{t.tutorial.pieces}</small>
       </span>
       <span className="tut-item">
         <span className="tut-emoji">🃏</span>
-        <small>Cards</small>
+        <small>{t.tutorial.cards}</small>
       </span>
       <span className="tut-item" data-skin="gold">
         <PieceGlyph type="queen" />
-        <small>Skins</small>
+        <small>{t.tutorial.skins}</small>
       </span>
     </div>
   );
@@ -80,9 +76,9 @@ function BarracksDemo() {
           ['rook', '×1', false],
           ['bishop', '×1', true],
         ] as const
-      ).map(([t, n, temp]) => (
-        <span key={t} className="tut-item">
-          <PieceGlyph type={t} temp={temp} />
+      ).map(([k, n, temp]) => (
+        <span key={k} className="tut-item">
+          <PieceGlyph type={k} temp={temp} />
           <small>{n}</small>
         </span>
       ))}
@@ -91,6 +87,7 @@ function BarracksDemo() {
 }
 
 function RankDemo() {
+  const t = useT();
   return (
     <div className="tut-rank">
       <div className="tut-levelup">
@@ -100,7 +97,7 @@ function RankDemo() {
       </div>
       <div className="tut-insignias">
         {[1, 2, 3, 4, 5].map((r) => (
-          <span key={r} title={RANKS[r]}>
+          <span key={r} title={t.rank(r)}>
             <Insignia rank={r} />
           </span>
         ))}
@@ -110,6 +107,7 @@ function RankDemo() {
 }
 
 function StarsDemo() {
+  const t = useT();
   const row = (n: number, label: string) => (
     <div className="tut-stars-row">
       <span className="stars">
@@ -122,21 +120,15 @@ function StarsDemo() {
   );
   return (
     <div className="tut-stars">
-      {row(3, 'lose ≤ ¼')}
-      {row(2, 'lose ≤ ½')}
-      {row(1, 'win')}
+      {row(3, t.tutorial.lose4)}
+      {row(2, t.tutorial.lose2)}
+      {row(1, t.tutorial.win)}
     </div>
   );
 }
 
-const STEPS: Step[] = [
-  { title: 'Welcome, Commander', text: 'Start with pawns. Build an army. Defeat the Dragon Queen.', visual: <Journey /> },
-  { title: 'Deploy', text: 'Drag your pieces onto the glowing squares, then tap Fight.', visual: <DragDemo /> },
-  { title: 'Shop', text: 'Win coins. Spend them on pieces, cards and skins.', visual: <ShopDemo /> },
-  { title: 'Barracks', text: 'Your army lives here. ⏳ mercenaries fight once.', visual: <BarracksDemo /> },
-  { title: 'Levels & ranks', text: 'Pieces level up in battle. Every 10 levels: new rank, new power.', visual: <RankDemo /> },
-  { title: 'Stars', text: 'Lose less, earn more stars. Stars unlock bonus stages.', visual: <StarsDemo /> },
-];
+/** One picture per step; titles and text come from the translations (same order). */
+const VISUALS: ReactNode[] = [<Journey />, <DragDemo />, <ShopDemo />, <BarracksDemo />, <RankDemo />, <StarsDemo />];
 
 /* ---------------- Modal ---------------- */
 
@@ -144,13 +136,14 @@ export function Tutorial() {
   const { setTutorialOpen, update, save } = useStore();
   const [step, setStep] = useState(0);
   const swipe = useRef<number | null>(null);
-  const last = step === STEPS.length - 1;
+  const t = useT();
+  const last = step === VISUALS.length - 1;
 
   const close = () => {
     setTutorialOpen(false);
     if (!save.tutorialSeen) update((s) => void (s.tutorialSeen = true));
   };
-  const go = (d: number) => setStep((s) => Math.min(STEPS.length - 1, Math.max(0, s + d)));
+  const go = (d: number) => setStep((s) => Math.min(VISUALS.length - 1, Math.max(0, s + d)));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -162,7 +155,7 @@ export function Tutorial() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const s = STEPS[step];
+  const s = { ...t.tutorial.steps[step], visual: VISUALS[step] };
   return (
     <Modal onClose={close} className="tutorial">
       <div
@@ -180,18 +173,18 @@ export function Tutorial() {
         <p>{s.text}</p>
       </div>
       <div className="tut-dots">
-        {STEPS.map((_, i) => (
-          <button key={i} className={i === step ? 'on' : ''} onClick={() => setStep(i)} aria-label={`Step ${i + 1}`} />
+        {VISUALS.map((_, i) => (
+          <button key={i} className={i === step ? 'on' : ''} onClick={() => setStep(i)} aria-label={t.tutorial.step(i + 1)} />
         ))}
       </div>
       <div className="modal-actions">
         {step > 0 ? (
           <button className="btn btn-ghost" onClick={() => go(-1)}>←</button>
         ) : (
-          <button className="btn btn-ghost" onClick={close}>Skip</button>
+          <button className="btn btn-ghost" onClick={close}>{t.tutorial.skip}</button>
         )}
         <button className="btn btn-primary" onClick={last ? close : () => go(1)}>
-          {last ? "Let's play!" : 'Next →'}
+          {last ? t.tutorial.play : t.tutorial.next}
         </button>
       </div>
     </Modal>

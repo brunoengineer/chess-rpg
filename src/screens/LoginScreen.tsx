@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { GoogleIcon } from '../components/Chrome';
+import { useT } from '../i18n';
 import { firebaseEnabled } from '../state/firebase';
 import { useStore } from '../state/store';
 
 const FLOATERS = ['♟', '♞', '♝', '♜', '♛', '♚'];
 
 export function LoginScreen() {
-  const { signIn, playAsGuest, authError, phase } = useStore();
+  const { signIn, playAsGuest, authError, phase, lang, setLang } = useStore();
+  const t = useT();
   const floaters = useMemo(
     () =>
       Array.from({ length: 18 }, (_, i) => ({
@@ -30,21 +32,25 @@ export function LoginScreen() {
       <div className="login-card panel">
         <div className="login-crest">♞&#xFE0E;</div>
         <h1 className="title">Gambit Quest</h1>
-        <p className="tagline">From pawns to queens.</p>
+        <p className="tagline">{t.login.tagline}</p>
         {phase === 'loading' ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">{t.login.loading}</p>
         ) : (
           <>
             <button className="btn btn-google btn-lg" onClick={() => void signIn()} disabled={!firebaseEnabled}>
-              <GoogleIcon /> Sign in with Google
+              <GoogleIcon /> {t.login.signIn}
             </button>
-            {!firebaseEnabled && <p className="muted small">Google sign-in not configured yet.</p>}
+            {!firebaseEnabled && <p className="muted small">{t.login.notConfigured}</p>}
             <button className="btn btn-ghost" onClick={playAsGuest}>
-              Play as guest
+              {t.login.guest}
             </button>
           </>
         )}
         {authError && <p className="error">{authError}</p>}
+        <div className="lang-switch small-switch" role="group" aria-label={t.language.label}>
+          <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>English</button>
+          <button className={lang === 'pt' ? 'active' : ''} onClick={() => setLang('pt')}>Português</button>
+        </div>
       </div>
     </div>
   );

@@ -1,9 +1,9 @@
-import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, ARENA_UNLOCK, STAGE_BY_ID, arenaStage, isCleared } from '../game/campaign';
 import { LETTERS } from '../game/pieces';
 import type { PieceType } from '../game/types';
 import { BossFigure } from '../components/BossFigure';
 import { PieceGlyph } from '../components/Piece';
+import { useT } from '../i18n';
 import { useStore } from '../state/store';
 
 export function enemyRoster(layout: string[]): [PieceType, number][] {
@@ -14,12 +14,13 @@ export function enemyRoster(layout: string[]): [PieceType, number][] {
 
 export function ArenaTab() {
   const { save, setView } = useStore();
+  const t = useT();
   if (!isCleared(save.stages, ARENA_UNLOCK)) {
     return (
       <div className="arena panel locked-panel">
         <div className="big-icon">🏟️</div>
-        <h2>The Endless Arena</h2>
-        <p>🔒 Defeat <b>{STAGE_BY_ID[ARENA_UNLOCK].name}</b></p>
+        <h2>{t.region(ARENA_THEME)}</h2>
+        <p>🔒 {t.arena.locked} <b>{t.stage(STAGE_BY_ID[ARENA_UNLOCK])}</b></p>
       </div>
     );
   }
@@ -28,21 +29,21 @@ export function ArenaTab() {
     <div className="arena">
       <section className="region arena-hero" style={{ background: ARENA_THEME.bg }}>
         <div className="arena-level">
-          <small>Level</small>
+          <small>{t.arena.level}</small>
           <b>{save.arena.level}</b>
         </div>
         <div>
-          <h2>{stage.name}</h2>
+          <h2>{t.stage(stage)}</h2>
           <div className="chips">
             <span className="chip">📐 {stage.w}×{stage.h}</span>
-            <span className="chip">🪙 {stage.reward} + loot ×{stage.lootMult}</span>
-            <span className="chip">⏱ {stage.maxTurns} turns</span>
-            <span className="chip">🏆 Best: {save.arena.best || '—'}</span>
+            <span className="chip">🪙 {t.arena.reward(stage.reward, stage.lootMult)}</span>
+            <span className="chip">⏱ {t.arena.turns(stage.maxTurns)}</span>
+            <span className="chip">🏆 {t.arena.best} {save.arena.best || '—'}</span>
           </div>
           <div className="roster">
             {stage.boss && (
               <span className="roster-item">
-                <BossFigure kind={stage.boss.kind} className="inline" /> {BOSSES[stage.boss.kind].name}
+                <BossFigure kind={stage.boss.kind} className="inline" /> {t.bossName(stage.boss.kind)}
               </span>
             )}
             {enemyRoster(stage.layout).map(([t, n]) => (
@@ -52,7 +53,7 @@ export function ArenaTab() {
             ))}
           </div>
           <button className="btn btn-primary btn-lg" onClick={() => setView({ name: 'deploy', stage })} disabled={!!save.active}>
-            Enter the Arena
+            {t.arena.enter}
           </button>
         </div>
       </section>

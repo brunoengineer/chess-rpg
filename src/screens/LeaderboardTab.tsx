@@ -3,6 +3,7 @@ import { GoogleIcon } from '../components/Chrome';
 import { PieceGlyph } from '../components/Piece';
 import { cleanNickname, totalStars, validNickname } from '../game/ladder';
 import type { PieceType } from '../game/types';
+import { tNow, useT, type T } from '../i18n';
 import { firebaseEnabled } from '../state/firebase';
 import { entryFromSave, fetchPosition, fetchTop, keyField, removeLadderEntry, syncLadder, type Board, type LadderEntry } from '../state/leaderboard';
 import { useStore } from '../state/store';
@@ -10,13 +11,13 @@ import { useStore } from '../state/store';
 const CACHE_MS = 3 * 60_000;
 const cache = new Map<string, { at: number; top: LadderEntry[]; position: number | null }>();
 
-const BOARDS: { id: Board; icon: string; label: string; rule: string }[] = [
-  { id: 'stars', icon: '⭐', label: 'Stars', rule: 'Most stars → fewest battles to reach them → first to get there' },
-  { id: 'arena', icon: '🏟️', label: 'Arena', rule: 'Highest level → fewest Arena fights to reach it → first to get there' },
+const BOARDS: { id: Board; icon: string }[] = [
+  { id: 'stars', icon: '⭐' },
+  { id: 'arena', icon: '🏟️' },
 ];
 
-const value = (b: Board, e: LadderEntry) => (b === 'stars' ? `★ ${e.stars}` : `Lv ${e.arena}`);
-const detail = (b: Board, e: LadderEntry) => (b === 'stars' ? `${e.starsBattles} battles` : `${e.arenaRuns} fights`);
+const value = (t: T, b: Board, e: LadderEntry) => (b === 'stars' ? `★ ${e.stars}` : t.levels.lv(e.arena));
+const detail = (t: T, b: Board, e: LadderEntry) => (b === 'stars' ? t.ladder.battles(e.starsBattles) : t.ladder.fights(e.arenaRuns));
 const counts = (b: Board, e: LadderEntry) => (b === 'stars' ? e.stars > 0 : e.arena > 0);
 const PODIUM: { place: number; glyph: PieceType }[] = [
   { place: 2, glyph: 'rook' },
@@ -24,13 +25,14 @@ const PODIUM: { place: number; glyph: PieceType }[] = [
   { place: 3, glyph: 'bishop' },
 ];
 
-function ago(t: number) {
-  const m = Math.round((Date.now() - t) / 60_000);
-  return m < 1 ? 'just now' : `${m} min ago`;
+function updated(t: T, at: number) {
+  const m = Math.round((Date.now() - at) / 60_000);
+  return m < 1 ? t.ladder.updatedNow : t.ladder.updatedAgo(m);
 }
 
 export function LeaderboardTab() {
   const { save, player, view, setView, update, signIn } = useStore();
+  const t = useT();
   const board: Board = (view.name === 'hub' && view.board) || 'stars';
   const joined = !!player && !player.guest && save.ladder.joined && !!save.ladder.nickname;
   const me = player && joined ? entryFromSave(player.uid, save) : null;
@@ -74,7 +76,7 @@ export function LeaderboardTab() {
     cache.clear();
     setTick((t) => t + 1);
   };
-  const rule = BOARDS.find((b) => b.id === board)!.rule;
+  const rule = board === 'stars' ? t.ladder.starsRule : t.ladder.arenaRule;
   const top3 = state.top.slice(0, 3);
   const rest = state.top.slice(3);
   const meInTop = !!me && state.top.some((e) => e.uid === me.uid);
@@ -84,17 +86,17 @@ export function LeaderboardTab() {
       <nav className="segmented">
         {BOARDS.map((b) => (
           <button key={b.id} className={board === b.id ? 'active' : ''} onClick={() => setView({ name: 'hub', tab: 'ranks', board: b.id })}>
-            {b.icon} {b.label}
+            {b.icon} {t.ladder[b.id]}
           </button>
         ))}
       </nav>
 
       <div className="ladder-bar">
-        <button className={`ladder-rule-btn ${showRule ? 'on' : ''}`} onClick={() => setShowRule(!showRule)} aria-label="How ties are broken">
-          ⓘ Ties
+        <button className={`ladder-rule-btn ${showRule ? 'on' : ''}`} onClick={() => setShowRule(!showRule)} aria-label={t.ladder.tiesAria}>
+          {t.ladder.ties}
         </button>
-        <span className="muted small">{state.at ? `Updated ${ago(state.at)}` : ''}</span>
-        <button className="btn btn-ghost btn-small" onClick={refresh} disabled={state.status === 'loading'} aria-label="Refresh">
+        <span className="muted small">{state.at ? updated(t, state.at) : ''}</span>
+        <button className="btn btn-ghost btn-small" onClick={refresh} disabled={state.status === 'loading'} aria-label={t.ladder.refresh}>
           ↻
         </button>
       </div>
@@ -119,7 +121,7 @@ export function LeaderboardTab() {
               s.ladder.arenaRunsAtBest = s.ladder.arenaRuns;
             }
           });
-          if (!(await syncLadder())) useStore.getState().toast("Couldn't save to the leaderboard — try again", '⚠️');
+          if (!(await syncLadder())) useStore.getState().toast(tNow().toast.ladderSaveFailed, '⚠️');
           refresh();
         }}
         onLeave={async () => {
@@ -131,8 +133,8 @@ export function LeaderboardTab() {
 
       {state.status === 'error' && (
         <div className="panel ladder-empty">
-          <p>Couldn't load the leaderboard.</p>
-          <button className="btn btn-small" onClick={refresh}>Try again</button>
+          <p>{t.ladder.loadFailed}</p>
+          <button className="btn btn-small" onClick={refresh}>{t.ladder.tryAgain}</button>
         </div>
       )}
 
@@ -147,7 +149,7 @@ export function LeaderboardTab() {
       {state.status !== 'error' && state.status !== 'loading' && !state.top.length && (
         <div className="panel ladder-empty">
           <div className="big-icon">🏆</div>
-          <p>No one here yet. Be the first!</p>
+          <p>{t.ladder.empty}</p>
         </div>
       )}
 
@@ -160,8 +162,8 @@ export function LeaderboardTab() {
               <div key={place} className={`podium-slot p${place} ${e.uid === me?.uid ? 'me' : ''}`}>
                 <PieceGlyph type={glyph} className="podium-glyph" />
                 <b className="podium-name" title={e.name}>{e.name}</b>
-                <span className="podium-value">{value(board, e)}</span>
-                <small>{detail(board, e)}</small>
+                <span className="podium-value">{value(t, board, e)}</span>
+                <small>{detail(t, board, e)}</small>
                 <div className="podium-step">{place}</div>
               </div>
             );
@@ -182,7 +184,7 @@ export function LeaderboardTab() {
           {counts(board, me) && state.position ? (
             <Row pos={state.position} e={me} board={board} me />
           ) : (
-            <p className="muted small">{board === 'stars' ? 'Win a stage to get on this board.' : 'Win an Arena fight to get on this board.'}</p>
+            <p className="muted small">{board === 'stars' ? t.ladder.winStage : t.ladder.winArena}</p>
           )}
         </div>
       )}
@@ -191,16 +193,17 @@ export function LeaderboardTab() {
 }
 
 function Row({ pos, e, board, me }: { pos: number; e: LadderEntry; board: Board; me: boolean }) {
+  const t = useT();
   return (
     <li className={`ladder-row ${me ? 'me' : ''}`}>
       <span className="ladder-pos">#{pos.toLocaleString()}</span>
       <span className="ladder-name">
         {e.name}
-        {me && <em>You</em>}
+        {me && <em>{t.ladder.you}</em>}
       </span>
       <span className="ladder-value">
-        {value(board, e)}
-        <small>{detail(board, e)}</small>
+        {value(t, board, e)}
+        <small>{detail(t, board, e)}</small>
       </span>
     </li>
   );
@@ -214,6 +217,7 @@ function JoinCard(props: {
   onSave: (name: string) => Promise<void>;
   onLeave: () => Promise<void>;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(props.nickname ?? '');
   const [busy, setBusy] = useState(false);
@@ -222,10 +226,10 @@ function JoinCard(props: {
   if (props.guest) {
     return (
       <div className="panel join-card">
-        <p>Sign in to join the leaderboard.</p>
+        <p>{t.ladder.signInToJoin}</p>
         {firebaseEnabled && (
           <button className="btn btn-google btn-small" onClick={props.onSignIn}>
-            <GoogleIcon /> Sign in with Google
+            <GoogleIcon /> {t.login.signIn}
           </button>
         )}
       </div>
@@ -236,9 +240,9 @@ function JoinCard(props: {
     return (
       <div className="join-status">
         <span className="muted small">
-          Playing as <b>{props.nickname}</b>
+          {t.ladder.playingAs} <b>{props.nickname}</b>
         </span>
-        <button className="btn btn-ghost btn-small" onClick={() => (setName(props.nickname ?? ''), setEditing(true))}>✎ Rename</button>
+        <button className="btn btn-ghost btn-small" onClick={() => (setName(props.nickname ?? ''), setEditing(true))}>{t.ladder.rename}</button>
         <button
           className="btn btn-ghost btn-small danger"
           disabled={busy}
@@ -248,7 +252,7 @@ function JoinCard(props: {
             setBusy(false);
           }}
         >
-          Leave
+          {t.ladder.leave}
         </button>
       </div>
     );
@@ -266,20 +270,20 @@ function JoinCard(props: {
         setEditing(false);
       }}
     >
-      <b>{props.joined ? 'Change nickname' : 'Join the leaderboard'}</b>
+      <b>{props.joined ? t.ladder.changeNick : t.ladder.join}</b>
       <div className="join-row">
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder="Nickname" aria-label="Nickname" autoComplete="off" />
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder={t.ladder.nickname} aria-label={t.ladder.nickname} autoComplete="off" />
         <button className="btn btn-primary btn-small" type="submit" disabled={!ok || busy}>
-          {props.joined ? 'Save' : 'Join'}
+          {props.joined ? t.ladder.save : t.ladder.joinBtn}
         </button>
         {props.joined && (
           <button className="btn btn-ghost btn-small" type="button" onClick={() => setEditing(false)}>
-            Cancel
+            {t.ladder.cancel}
           </button>
         )}
       </div>
       <small className={name && !ok ? 'error' : 'muted'}>
-        {name && !ok ? '3–16 letters, numbers, spaces, . _ -' : 'Only your nickname and scores are shown.'}
+        {name && !ok ? t.ladder.nickRules : t.ladder.nickPrivacy}
       </small>
     </form>
   );

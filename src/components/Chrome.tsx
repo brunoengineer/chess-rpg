@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../i18n';
 import { firebaseEnabled } from '../state/firebase';
 import type { Settings } from '../state/save';
 import { useStore, type Tab } from '../state/store';
@@ -26,20 +27,21 @@ export function AnimatedNumber({ value }: { value: number }) {
 }
 
 export function CoinPill({ amount, onClick }: { amount: number; onClick?: () => void }) {
+  const t = useT();
   return (
-    <button className="pill pill-coins pill-link" title="Coins · open the Shop" onClick={onClick} disabled={!onClick}>
+    <button className="pill pill-coins pill-link" title={t.top.coins} onClick={onClick} disabled={!onClick}>
       <span className="coin-icon">🪙</span>
       <AnimatedNumber value={amount} />
     </button>
   );
 }
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'campaign', label: 'Campaign', icon: '🗺️' },
-  { id: 'arena', label: 'Arena', icon: '🏟️' },
-  { id: 'shop', label: 'Shop', icon: '⚒️' },
-  { id: 'barracks', label: 'Barracks', icon: '🛡️' },
-  { id: 'ranks', label: 'Ranks', icon: '🏆' },
+const TABS: { id: Tab; icon: string }[] = [
+  { id: 'campaign', icon: '🗺️' },
+  { id: 'arena', icon: '🏟️' },
+  { id: 'shop', icon: '⚒️' },
+  { id: 'barracks', icon: '🛡️' },
+  { id: 'ranks', icon: '🏆' },
 ];
 
 export function TopBar() {
@@ -48,7 +50,8 @@ export function TopBar() {
   // Coins and leadership open the Shop (not mid-battle, so a stray tap can't pull you out of a fight).
   const toShop = view.name === 'battle' ? undefined : () => setView({ name: 'hub', tab: 'shop' });
   const syncIcon = player?.guest ? '💾' : sync === 'saving' ? '⏳' : sync === 'error' ? '⚠️' : '☁️';
-  const syncTitle = player?.guest ? 'Guest: saved on this device only' : sync === 'saving' ? 'Saving…' : sync === 'error' ? 'Cloud save failed — will retry on next change' : 'Saved to the cloud';
+  const tr = useT();
+  const syncTitle = player?.guest ? tr.top.syncGuest : sync === 'saving' ? tr.top.syncSaving : sync === 'error' ? tr.top.syncError : tr.top.syncSaved;
   return (
     <>
       <header className="topbar">
@@ -61,23 +64,23 @@ export function TopBar() {
             {TABS.map((t) => (
               <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setView({ name: 'hub', tab: t.id })}>
                 <span className="tab-icon">{t.icon}</span>
-                <span className="tab-label">{t.label}</span>
+                <span className="tab-label">{tr.tabs[t.id]}</span>
               </button>
             ))}
           </nav>
         )}
         <div className="topbar-right">
           <CoinPill amount={save.coins} onClick={toShop} />
-          <button className="pill pill-link" title="Leadership · upgrade it in the Shop" onClick={toShop} disabled={!toShop}>
+          <button className="pill pill-link" title={tr.top.leadership} onClick={toShop} disabled={!toShop}>
             👑 {save.leadership}
           </button>
           <span className="sync" title={syncTitle}>
             {syncIcon}
           </span>
-          <button className="help-btn" onClick={() => setTutorialOpen(true)} title="How to play" aria-label="How to play">
+          <button className="help-btn" onClick={() => setTutorialOpen(true)} title={tr.top.howToPlay} aria-label={tr.top.howToPlay}>
             ?
           </button>
-          <button className="avatar" onClick={() => setSettingsOpen(true)} title="Settings">
+          <button className="avatar" onClick={() => setSettingsOpen(true)} title={tr.top.settings}>
             {player?.photo ? <img src={player.photo} alt="" referrerPolicy="no-referrer" /> : <span>⚙️</span>}
           </button>
         </div>
@@ -87,7 +90,7 @@ export function TopBar() {
           {TABS.map((t) => (
             <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`} onClick={() => setView({ name: 'hub', tab: t.id })}>
               <span className="tab-icon">{t.icon}</span>
-              <span className="tab-label">{t.label}</span>
+              <span className="tab-label">{tr.tabs[t.id]}</span>
             </button>
           ))}
         </nav>
@@ -120,49 +123,54 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
 }
 
 export function SettingsModal() {
-  const { save, update, player, signIn, signOut, resetProgress, setSettingsOpen, authError } = useStore();
+  const { save, update, player, signIn, signOut, resetProgress, setSettingsOpen, authError, lang, setLang } = useStore();
+  const t = useT();
   const [confirmReset, setConfirmReset] = useState(false);
   const set = (k: keyof Settings) => (v: boolean) => update((s) => void (s.settings[k] = v));
   const st = save.stats;
   return (
     <Modal onClose={() => setSettingsOpen(false)} className="settings">
-      <h2>Settings</h2>
+      <h2>{t.settings.title}</h2>
+      <div className="lang-switch" role="group" aria-label={t.language.label}>
+        <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>{t.language.en}</button>
+        <button className={lang === 'pt' ? 'active' : ''} onClick={() => setLang('pt')}>{t.language.pt}</button>
+      </div>
       <div className="account">
         {player?.photo && <img src={player.photo} alt="" referrerPolicy="no-referrer" />}
         <div>
-          <strong>{player?.name}</strong>
-          <small>{player?.guest ? '💾 This device only' : '☁️ Cloud save'}</small>
+          <strong>{player?.guest ? t.settings.guest : player?.name}</strong>
+          <small>{player?.guest ? t.settings.thisDevice : t.settings.cloudSave}</small>
         </div>
       </div>
       {player?.guest && firebaseEnabled && (
         <button className="btn btn-google" onClick={() => void signIn()}>
-          <GoogleIcon /> Sign in with Google
+          <GoogleIcon /> {t.login.signIn}
         </button>
       )}
       {authError && <p className="error">{authError}</p>}
 
       <div className="toggles">
-        <Toggle label="Move hints" value={save.settings.showMoves} onChange={set('showMoves')} />
-        <Toggle label="Enemy move hints" value={save.settings.showEnemyMoves} onChange={set('showEnemyMoves')} />
-        <Toggle label="Sound" value={save.settings.sound} onChange={set('sound')} />
-        <Toggle label="Fast animations" value={save.settings.fastAnim} onChange={set('fastAnim')} />
+        <Toggle label={t.settings.moveHints} value={save.settings.showMoves} onChange={set('showMoves')} />
+        <Toggle label={t.settings.enemyHints} value={save.settings.showEnemyMoves} onChange={set('showEnemyMoves')} />
+        <Toggle label={t.settings.sound} value={save.settings.sound} onChange={set('sound')} />
+        <Toggle label={t.settings.fastAnim} value={save.settings.fastAnim} onChange={set('fastAnim')} />
       </div>
 
       <div className="stats-grid">
-        <div><b>{st.battles}</b><small>Battles</small></div>
-        <div><b>{st.wins}</b><small>Victories</small></div>
-        <div><b>{st.captures}</b><small>Captures</small></div>
-        <div><b>{st.bossesSlain}</b><small>Bosses</small></div>
-        <div><b>{st.coinsEarned.toLocaleString()}</b><small>Coins</small></div>
+        <div><b>{st.battles}</b><small>{t.settings.battles}</small></div>
+        <div><b>{st.wins}</b><small>{t.settings.victories}</small></div>
+        <div><b>{st.captures}</b><small>{t.settings.captures}</small></div>
+        <div><b>{st.bossesSlain}</b><small>{t.settings.bosses}</small></div>
+        <div><b>{st.coinsEarned.toLocaleString()}</b><small>{t.settings.coins}</small></div>
       </div>
 
       <div className="settings-actions">
         {!confirmReset ? (
-          <button className="btn btn-ghost danger" onClick={() => setConfirmReset(true)}>Reset</button>
+          <button className="btn btn-ghost danger" onClick={() => setConfirmReset(true)}>{t.settings.reset}</button>
         ) : (
-          <button className="btn btn-danger" onClick={resetProgress}>Erase all?</button>
+          <button className="btn btn-danger" onClick={resetProgress}>{t.settings.eraseAll}</button>
         )}
-        <button className="btn btn-ghost" onClick={() => void signOut()}>{player?.guest ? 'Exit' : 'Sign out'}</button>
+        <button className="btn btn-ghost" onClick={() => void signOut()}>{player?.guest ? t.settings.exit : t.settings.signOut}</button>
       </div>
     </Modal>
   );

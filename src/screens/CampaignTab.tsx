@@ -4,6 +4,7 @@ import {
   MAIN_STAGES, REGIONS, STAGES, extraStarsNeeded, hardStage, hardStars, isCleared, isHardOpen, isStageUnlocked, mainStars,
 } from '../game/campaign';
 import type { StageDef } from '../game/types';
+import { useT } from '../i18n';
 import { useStore } from '../state/store';
 
 export function Stars({ n, max = 3 }: { n: number; max?: number }) {
@@ -18,6 +19,7 @@ export function Stars({ n, max = 3 }: { n: number; max?: number }) {
 
 function StageNode({ s, current }: { s: StageDef; current: boolean }) {
   const { save, setView } = useStore();
+  const t = useT();
   const open = isStageUnlocked(save.stages, s);
   const p = save.stages[s.id];
   const face = !open ? '🔒' : s.isBoss ? <BossFigure kind={s.boss!.kind} /> : s.extra ? '✦' : s.id.split('-')[1].replace('H', '');
@@ -26,10 +28,10 @@ function StageNode({ s, current }: { s: StageDef; current: boolean }) {
       className={`stage-node ${s.isBoss ? 'boss' : ''} ${s.extra ? 'extra' : ''} ${p ? 'cleared' : ''} ${current ? 'current' : ''}`}
       disabled={!open}
       onClick={() => setView({ name: 'deploy', stage: s })}
-      title={s.name}
+      title={t.stage(s)}
     >
       <span className="node-face">{face}</span>
-      <span className="node-label">{open ? s.name : s.extra ? `★ ${extraStarsNeeded(s.extra)}` : ''}</span>
+      <span className="node-label">{open ? t.stage(s) : s.extra ? `★ ${extraStarsNeeded(s.extra)}` : ''}</span>
       {p && <Stars n={p.stars} />}
     </button>
   );
@@ -37,13 +39,14 @@ function StageNode({ s, current }: { s: StageDef; current: boolean }) {
 
 export function CampaignTab() {
   const { save, setView, hardView, toggleHard } = useStore();
+  const t = useT();
   const progress = save.stages;
 
   return (
     <div className="campaign">
       {save.active && (
         <button className="resume-banner" onClick={() => setView({ name: 'battle' })}>
-          ⚔️ Resume: <b>{save.active.stage.name}</b>
+          ⚔️ {t.campaign.resume} <b>{t.stage(save.active.stage)}</b>
         </button>
       )}
       {REGIONS.map((r) => {
@@ -63,9 +66,9 @@ export function CampaignTab() {
           >
             <header className="region-head">
               <span className="region-icon">{r.icon}</span>
-              <h2>{r.name}</h2>
+              <h2>{t.region(r)}</h2>
               {hardOpen && (
-                <button className={`hard-toggle ${hard ? 'on' : ''}`} onClick={() => toggleHard(r.id)} title="Hard mode: enemies +2 ranks, double rewards">
+                <button className={`hard-toggle ${hard ? 'on' : ''}`} onClick={() => toggleHard(r.id)} title={t.campaign.hardTitle}>
                   🔥
                 </button>
               )}
@@ -88,7 +91,7 @@ export function CampaignTab() {
                 )}
               </div>
             ) : (
-              <p className="region-lock">🔒 {prevBoss?.name}</p>
+              <p className="region-lock">🔒 {prevBoss && t.stage(prevBoss)}</p>
             )}
           </section>
         );

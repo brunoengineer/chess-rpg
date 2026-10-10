@@ -7,12 +7,12 @@ import { requestAiMove } from '../game/aiClient';
 import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, REGIONS, arenaStage, isCleared, nextStage } from '../game/campaign';
 import { CARDS, cardPlayable, playCard, validSquares, type CardId } from '../game/cards';
-import { PIECE_SKINS } from '../game/cosmetics';
 import { computeResult, lootFromFx, type BattleResult } from '../game/economy';
 import { PASS, applyMove, cloneBattle, enemyPostTurn, enemyPreTurn, genMoves, genUnitMoves, material, reachSquares } from '../game/engine';
 import { PIECES, PIECE_ORDER } from '../game/pieces';
-import { RANKS, levelInfo } from '../game/ranks';
+import { levelInfo } from '../game/ranks';
 import type { Battle, FxEvent, Move, Outcome, PieceType, StageDef, Unit } from '../game/types';
+import { tNow, useT, type T } from '../i18n';
 import { consumeCard, finishBattle, type FinishExtras } from '../state/actions';
 import { addCount, classRanks, count } from '../state/save';
 import { useStore } from '../state/store';
@@ -33,17 +33,19 @@ interface Targeting {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let fxSeq = 0;
 
-const REASONS: Record<Outcome['reason'], [string, string]> = {
+/** Subtitle under Victory/Defeat: [when you won, when you didn't]. */
+const reasons = (t: T): Record<Outcome['reason'], [string, string]> => ({
   annihilation: ['', ''],
   boss: ['', ''],
-  points: ['On points', 'On points'],
-  time: ['On points', 'Out of time'],
-  deadlock: ['On points', 'Stalemate'],
-  surrender: ['', 'Retreated'],
-};
+  points: [t.result.onPoints, t.result.onPoints],
+  time: [t.result.onPoints, t.result.outOfTime],
+  deadlock: [t.result.onPoints, t.result.stalemate],
+  surrender: ['', t.result.retreated],
+});
 
 export function BattleScreen() {
   const save = useStore((s) => s.save);
+  const t = useT();
   const setView = useStore((s) => s.setView);
   const update = useStore((s) => s.update);
   const active = save.active;
@@ -198,7 +200,7 @@ export function BattleScreen() {
       commit({ ...battle, quietOnly: false, turn: 'E' });
     } else if (genMoves(battle, 'P').length === 0) {
       busy.current = true;
-      useStore.getState().toast('No moves — pass', '⏸');
+      useStore.getState().toast(tNow().toast.noMoves, '⏸');
       setTimeout(() => {
         busy.current = false;
         const nb = applyMove(battle, PASS);
@@ -334,10 +336,10 @@ export function BattleScreen() {
         <div className="screen-head">
           <h2>
             {stage.hard && '🔥 '}
-            {stage.name}
+            {t.stage(stage)}
           </h2>
           <div className={`turn-badge ${myTurn ? 'mine' : 'theirs'}`}>
-            {battle.over || final ? '—' : myTurn ? (battle.quietOnly ? '⏩ Bonus move' : 'Your move') : <>Enemy<span className="dots" /></>}
+            {battle.over || final ? '—' : myTurn ? (battle.quietOnly ? t.battle.bonusMove : t.battle.yourMove) : <>{t.battle.enemy}<span className="dots" /></>}
           </div>
         </div>
         <Board
@@ -356,14 +358,14 @@ export function BattleScreen() {
         {targeting && (
           <div className="targeting">
             <span>
-              {CARDS[targeting.id].icon} {CARDS[targeting.id].name}
+              {CARDS[targeting.id].icon} {t.cardName(targeting.id)}
             </span>
             {targeting.id === 'reinforce' && !targeting.reinforce && (
               <span className="reserve">
-                {reserve.map((t) => (
-                  <button key={t} onClick={() => setTargeting({ ...targeting, reinforce: t })} title={PIECES[t].name}>
-                    <PieceGlyph type={t} />
-                    <small>×{count(save.army, t)}</small>
+                {reserve.map((k) => (
+                  <button key={k} onClick={() => setTargeting({ ...targeting, reinforce: k })} title={t.piece(k)}>
+                    <PieceGlyph type={k} />
+                    <small>×{count(save.army, k)}</small>
                   </button>
                 ))}
               </span>
@@ -371,7 +373,7 @@ export function BattleScreen() {
             <button className="btn btn-ghost btn-small" onClick={() => setTargeting(null)}>✕</button>
           </div>
         )}
-        {battle.telegraph && <div className="telegraph-warning">{battle.telegraph.kind === 'breath' ? '🔥 Fire next turn!' : '⚠ Quake next turn!'}</div>}
+        {battle.telegraph && <div className="telegraph-warning">{battle.telegraph.kind === 'breath' ? t.battle.fire : t.battle.quake}</div>}
       </div>
 
       <aside className="side-col">
@@ -383,7 +385,7 @@ export function BattleScreen() {
                 className={`card-btn ${targeting?.id === id ? 'active' : ''}`}
                 disabled={!canPlay(id)}
                 onClick={() => (targeting?.id === id ? setTargeting(null) : startCard(id))}
-                title={`${CARDS[id].name}: ${CARDS[id].desc}`}
+                title={`${t.cardName(id)}: ${t.cardDesc(id)}`}
               >
                 <span>{CARDS[id].icon}</span>
                 {n > 1 && <small>×{n}</small>}
@@ -393,11 +395,11 @@ export function BattleScreen() {
         )}
         <section className="panel battle-info">
           <div className="info-row">
-            <span className={turnsLeft <= 5 && !final ? 'warn' : ''} title="Turn limit">⏱ {turnNo}/{maxTurns}</span>
-            {(battle.cardsUsed ?? 0) + (active?.preCards ?? 0) > 0 && <span className="muted small" title="Cards used: max ★★">🃏 ★★</span>}
-            <span className="loot" title="Loot">🪙 {loot}{(active?.lootMult ?? 1) > 1 && ' ×2'}</span>
+            <span className={turnsLeft <= 5 && !final ? 'warn' : ''} title={t.battle.turnLimit}>⏱ {turnNo}/{maxTurns}</span>
+            {(battle.cardsUsed ?? 0) + (active?.preCards ?? 0) > 0 && <span className="muted small" title={t.battle.cardsUsed}>🃏 ★★</span>}
+            <span className="loot" title={t.battle.loot}>🪙 {loot}{(active?.lootMult ?? 1) > 1 && ' ×2'}</span>
           </div>
-          <div className="strength" title="Army strength">
+          <div className="strength" title={t.battle.strength}>
             <span>{pMat.toFixed(0)}</span>
             <div className="strength-bar">
               <i style={{ width: `${(pMat / Math.max(1, pMat + eMat)) * 100}%` }} />
@@ -408,7 +410,7 @@ export function BattleScreen() {
             <div key={b.id} className={`boss-panel ${b.alive ? '' : 'dead'}`} style={{ ['--aura' as string]: BOSSES[b.boss!].aura }}>
               <BossToken kind={b.boss!} hp={b.hp ?? 0} maxHp={b.maxHp ?? 1} />
               <div>
-                <b>{BOSSES[b.boss!].name}</b>
+                <b>{t.bossName(b.boss!)}</b>
                 <div className="hp-bar">
                   <i style={{ width: `${((b.hp ?? 0) / (b.maxHp ?? 1)) * 100}%` }} />
                 </div>
@@ -421,10 +423,10 @@ export function BattleScreen() {
           ))}
           {(capturedByMe.length > 0 || myFallen.length > 0) && (
             <div className="captured">
-              <div className="glyph-row" title="Captured">
+              <div className="glyph-row" title={t.battle.captured}>
                 {capturedByMe.map((u) => <PieceGlyph key={u.id} type={(u.promotedFrom ?? u.type) as PieceType} side="E" />)}
               </div>
-              <div className="glyph-row lost-row" title="Lost this battle">
+              <div className="glyph-row lost-row" title={t.battle.lost}>
                 {myFallen.map((u) => <PieceGlyph key={u.id} type={(u.promotedFrom ?? u.type) as PieceType} temp={u.temp} />)}
               </div>
             </div>
@@ -432,12 +434,12 @@ export function BattleScreen() {
         </section>
 
         <div className="battle-actions">
-          <button className="btn btn-ghost btn-small" title="Move hints" onClick={() => update((s) => void (s.settings.showMoves = !s.settings.showMoves))}>
+          <button className="btn btn-ghost btn-small" title={t.battle.moveHints} onClick={() => update((s) => void (s.settings.showMoves = !s.settings.showMoves))}>
             {save.settings.showMoves ? '👁' : '🙈'}
           </button>
           {!final && (
             <button className="btn btn-ghost btn-small danger" disabled={thinking} onClick={() => setConfirmSurrender(true)}>
-              🏳 Retreat
+              {t.battle.retreat}
             </button>
           )}
         </div>
@@ -445,10 +447,10 @@ export function BattleScreen() {
 
       {confirmSurrender && (
         <Modal onClose={() => setConfirmSurrender(false)}>
-          <h2>Retreat?</h2>
-          <p className="muted">Counts as a defeat. You keep the loot.</p>
+          <h2>{t.battle.retreatQ}</h2>
+          <p className="muted">{t.battle.retreatInfo}</p>
           <div className="modal-actions">
-            <button className="btn btn-ghost" onClick={() => setConfirmSurrender(false)}>Cancel</button>
+            <button className="btn btn-ghost" onClick={() => setConfirmSurrender(false)}>{t.battle.cancel}</button>
             <button
               className="btn btn-danger"
               onClick={() => {
@@ -456,7 +458,7 @@ export function BattleScreen() {
                 endBattle(battle, { winner: 'E', reason: 'surrender' });
               }}
             >
-              Retreat
+              {t.battle.retreatBtn}
             </button>
           </div>
         </Modal>
@@ -469,10 +471,11 @@ export function BattleScreen() {
 
 function ResultModal({ final }: { final: Final }) {
   const { setView, save } = useStore();
+  const t = useT();
   const { result, stage, unlocked, cardsUnlocked, arenaUnlocked, hardUnlocked, levelUps, skinsEarned } = final;
   const { outcome } = result;
-  const title = result.win ? 'Victory!' : outcome.winner === 'draw' ? 'Draw' : 'Defeat';
-  const reason = REASONS[outcome.reason][result.win ? 0 : 1];
+  const title = result.win ? t.result.victory : outcome.winner === 'draw' ? t.result.draw : t.result.defeat;
+  const reason = reasons(t)[outcome.reason][result.win ? 0 : 1];
   const next = result.win ? nextStage(stage) : undefined;
   const home = () => setView({ name: 'hub', tab: stage.isArena ? 'arena' : 'campaign' });
   const retry = () => setView({ name: 'deploy', stage: stage.isArena ? arenaStage(save.arena.level) : stage });
@@ -483,37 +486,37 @@ function ResultModal({ final }: { final: Final }) {
       <h1 className="result-title">{title}</h1>
       {reason && <p className="result-reason">{reason}</p>}
       {result.win && <Stars n={result.stars} />}
-      {result.cardCapped && <p className="muted small">🃏 ★★ max</p>}
+      {result.cardCapped && <p className="muted small">{t.result.cardCap}</p>}
       <div className="breakdown">
-        <div><span>Loot</span><b>🪙 {result.loot}</b></div>
-        {result.reward > 0 && <div><span>Reward</span><b>🪙 {result.reward}</b></div>}
-        {result.firstClearBonus > 0 && <div className="bonus"><span>First win</span><b>🪙 {result.firstClearBonus}</b></div>}
-        <div className="total"><span>Total</span><b>🪙 {result.total}</b></div>
+        <div><span>{t.result.loot}</span><b>🪙 {result.loot}</b></div>
+        {result.reward > 0 && <div><span>{t.result.reward}</span><b>🪙 {result.reward}</b></div>}
+        {result.firstClearBonus > 0 && <div className="bonus"><span>{t.result.firstWin}</span><b>🪙 {result.firstClearBonus}</b></div>}
+        <div className="total"><span>{t.result.total}</span><b>🪙 {result.total}</b></div>
       </div>
       {xpTypes.length > 0 && (
         <div className="xp-gains">
-          {xpTypes.map((t) => {
-            const up = levelUps.find((l) => l.type === t);
+          {xpTypes.map((k) => {
+            const up = levelUps.find((l) => l.type === k);
             return (
-              <span key={t} className={`xp-gain ${up ? 'up' : ''} ${up?.rankUp ? 'rank-up' : ''}`} title={up?.rankUp ? RANKS[Math.floor(up.to / 10)] : undefined}>
-                <PieceGlyph type={t} level={up?.to ?? levelInfo(save.xp[t] ?? 0).level} rank={levelInfo(save.xp[t] ?? 0).rank} />
-                <small>+{result.xp[t]} XP</small>
-                {up?.rankUp && <b>{RANKS[Math.floor(up.to / 10)]}!</b>}
+              <span key={k} className={`xp-gain ${up ? 'up' : ''} ${up?.rankUp ? 'rank-up' : ''}`} title={up?.rankUp ? t.rank(Math.floor(up.to / 10)) : undefined}>
+                <PieceGlyph type={k} level={up?.to ?? levelInfo(save.xp[k] ?? 0).level} rank={levelInfo(save.xp[k] ?? 0).rank} />
+                <small>{t.result.xp(result.xp[k] ?? 0)}</small>
+                {up?.rankUp && <b>{t.rank(Math.floor(up.to / 10))}!</b>}
               </span>
             );
           })}
         </div>
       )}
-      {unlocked.map((t) => (
-        <button key={t} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop', section: 'army', focus: `piece:${t}` })}>
-          <PieceGlyph type={t} className="big" />
-          <b>New: {PIECES[t].name}</b>
+      {unlocked.map((k) => (
+        <button key={k} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop', section: 'army', focus: `piece:${k}` })}>
+          <PieceGlyph type={k} className="big" />
+          <b>{t.result.newItem(t.piece(k))}</b>
         </button>
       ))}
       {cardsUnlocked.length > 0 && (
         <button className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop', section: 'cards', focus: `card:${cardsUnlocked[0]}` })}>
           <span className="big-icon">{cardsUnlocked.map((c) => CARDS[c].icon).join(' ')}</span>
-          <b>New cards</b>
+          <b>{t.result.newCards}</b>
         </button>
       )}
       {hardUnlocked && (
@@ -526,28 +529,28 @@ function ResultModal({ final }: { final: Final }) {
           }}
         >
           <span className="big-icon">🔥</span>
-          <b>New: Hard mode</b>
+          <b>{t.result.newHard}</b>
         </button>
       )}
       {skinsEarned.map((id) => (
         <button key={id} className="unlock" onClick={() => setView({ name: 'hub', tab: 'shop', section: 'style', focus: `skin:piece:${id}` })}>
           <span className="big-icon">🎨</span>
-          <b>New skin: {PIECE_SKINS.find((s) => s.id === id)?.name ?? id}</b>
+          <b>{t.result.newSkin(t.skin('piece', id))}</b>
         </button>
       ))}
       {arenaUnlocked && (
         <button className="unlock" onClick={() => setView({ name: 'hub', tab: 'arena' })}>
           <span className="big-icon">🏟️</span>
-          <b>New: Arena</b>
+          <b>{t.result.newArena}</b>
         </button>
       )}
       <div className="modal-actions">
-        <button className="btn btn-ghost" onClick={home}>🏠 Home</button>
-        <button className="btn btn-ghost" onClick={retry}>↺ {result.win ? 'Replay' : 'Retry'}</button>
+        <button className="btn btn-ghost" onClick={home}>{t.result.home}</button>
+        <button className="btn btn-ghost" onClick={retry}>{result.win ? t.result.replay : t.result.retry}</button>
         {next ? (
-          <button className="btn btn-primary" onClick={() => setView({ name: 'deploy', stage: next })}>Next →</button>
+          <button className="btn btn-primary" onClick={() => setView({ name: 'deploy', stage: next })}>{t.result.next}</button>
         ) : stage.isArena && result.win ? (
-          <button className="btn btn-primary" onClick={retry}>Next level →</button>
+          <button className="btn btn-primary" onClick={retry}>{t.result.nextLevel}</button>
         ) : null}
       </div>
     </Modal>
