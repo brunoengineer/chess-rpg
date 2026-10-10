@@ -177,7 +177,7 @@ button { font: inherit; color: inherit; }
 .tabs + .topbar-right { margin-left: 0; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums;
+  padding: 6px 12px; border-radius: 999px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap;
   background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border);
 }
 .pill-coins { color: #ffe08a; border-color: rgba(246, 196, 83, 0.35); }
@@ -193,7 +193,14 @@ button.pill-link:disabled { cursor: default; opacity: 1; }
 
 .main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 110px; }
 
-@media (max-width: 760px) {
+/* Narrow desktop: the full top bar no longer fits, so drop the wordmark and tighten the tabs. */
+@media (max-width: 1100px) {
+  .brand-name { display: none; }
+  .tab { padding: 8px 10px; }
+}
+
+/* Below this width the top-bar tabs no longer fit (measured ~931px with a 6-digit coin count). */
+@media (max-width: 960px) {
   .tabs, .brand-name { display: none; }
   .topbar { padding: 8px 12px; }
   /* Tabs are hidden here, so push coins, save, help and settings to the right edge. */
@@ -305,8 +312,11 @@ button.pill-link:disabled { cursor: default; opacity: 1; }
 .piece-desc { margin: 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.78); flex: 1; }
 .owned { margin: 0; font-size: 0.85rem; color: var(--muted); }
 .owned b { color: var(--text); }
-.buy-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.buy-row .btn { flex: 1 1 auto; padding: 9px 10px; font-size: 0.88rem; }
+/* Same layout on every card and in every language: two equal buttons, label over price. */
+.buy-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.buy-row .btn { min-width: 0; flex-direction: column; gap: 2px; padding: 7px 8px; font-size: 0.88rem; line-height: 1.2; }
+.buy-row .btn span { opacity: 1; }
+.buy-row .btn small { font-size: 0.8rem; font-weight: 600; opacity: 0.8; }
 .lock-note { margin: 0; font-size: 0.88rem; color: var(--muted); background: rgba(0, 0, 0, 0.25); padding: 9px 12px; border-radius: 10px; }
 .flash { animation: flash 0.5s; }
 

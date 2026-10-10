@@ -413,8 +413,11 @@ button.class-row:active { transform: scale(0.99); }
 .ladder-empty { text-align: center; }
 .ladder-empty p { margin: 6px 0 10px; }
 .skeleton .ladder-row { height: 50px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
-@media (max-width: 760px) {
+/* Sit above the bottom nav (same breakpoint as .bottom-nav in styles.css). */
+@media (max-width: 960px) {
   .ladder-me { bottom: calc(76px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 760px) {
   .ladder-row { grid-template-columns: 52px 1fr auto; padding: 9px 12px; }
   .podium-glyph { font-size: 2.1rem; }
   .podium-slot.p1 .podium-glyph { font-size: 2.6rem; }

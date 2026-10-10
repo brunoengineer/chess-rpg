@@ -124,10 +124,12 @@ function PieceCard({ type, flash, onBought }: { type: PieceType; flash: boolean;
       {unlocked ? (
         <div className="buy-row">
           <button className="btn btn-primary" disabled={save.coins < def.price} onClick={() => buyPiece(type, false) && onBought()} title={t.shop.yoursForever}>
-            {t.shop.buy} · 🪙 {def.price}
+            <span>{t.shop.buy}</span>
+            <small>🪙 {def.price}</small>
           </button>
           <button className="btn btn-ghost" disabled={save.coins < def.mercPrice} onClick={() => buyPiece(type, true) && onBought()} title={t.shop.oneBattle}>
-            ⏳ {t.shop.hire} · 🪙 {def.mercPrice}
+            <span>⏳ {t.shop.hire}</span>
+            <small>🪙 {def.mercPrice}</small>
           </button>
         </div>
       ) : (
