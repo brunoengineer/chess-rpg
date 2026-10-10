@@ -12,7 +12,6 @@ import type { PieceType, Placement, StageDef } from '../game/types';
 import { startBattle } from '../state/actions';
 import { classRanks, count, type Counts } from '../state/save';
 import { useStore } from '../state/store';
-import { enemyRoster } from './ArenaTab';
 
 type TrayItem = { type: PieceType; temp: boolean };
 type DragSource = { from: 'tray'; item: TrayItem } | { from: 'board'; index: number };
@@ -276,15 +275,47 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
   const firstClear = !stage.isArena && !isCleared(save.stages, stage.id);
   const back = () => setView({ name: 'hub', tab: stage.isArena ? 'arena' : 'campaign' });
 
+  const infoChips = (
+    <>
+      <span className="chip" title="Board">📐 {stage.w}×{stage.h}</span>
+      <span className="chip" title="Turn limit">⏱ {stage.maxTurns}</span>
+      <span className="chip" title="Enemy skill">{'💀'.repeat(difficulty(stage))}</span>
+      <span className="chip" title={firstClear ? 'Reward (doubled on first win)' : 'Reward'}>🪙 {stage.reward}{firstClear && <b className="bonus">×2</b>}</span>
+      <span className="chip" title="Loot multiplier">💰 ×{stage.lootMult}</span>
+      {stage.hard && <span className="chip hard-chip">🔥 Hard</span>}
+      {(stage.enemyRank ?? 0) > 0 && (
+        <span className="chip" title="Enemy rank">
+          <Insignia rank={stage.enemyRank!} /> {RANKS[stage.enemyRank!]}
+        </span>
+      )}
+      {stage.extra && <span className="chip" title="No cards on bonus stages">🚫🃏</span>}
+    </>
+  );
+  const scoutChip = scoutUnit && scoutUnit.type !== 'boss' && (
+    <span className="chip scout-chip">
+      <PieceGlyph type={scoutUnit.type} side="E" rank={scoutUnit.rank} /> {PIECES[scoutUnit.type].name}
+    </span>
+  );
+
   return (
     <div className="deploy screen-split">
       <div className="board-col">
-        <div className="screen-head">
+        <div className="screen-head deploy-head">
           <button className="btn btn-ghost btn-small" onClick={back}>← Back</button>
-          <div>
+          <div className="stage-titles">
             <small>{stage.isArena ? theme.name : `${theme.icon} ${theme.name} · ${stage.id}`}</small>
             <h2>{stage.name}</h2>
           </div>
+        </div>
+        {/* Mobile: stage info sits between the titles and the board. */}
+        <div className="stage-strip only-mobile">
+          {infoChips}
+          {boss && (
+            <span className="chip boss-chip" title={boss.moveText} style={{ ['--aura' as string]: boss.aura }}>
+              {boss.emoji} {boss.name} · ❤️ {stage.boss!.hp ?? boss.hp}
+            </span>
+          )}
+          {scoutChip}
         </div>
         <Board
           battle={preview}
@@ -309,29 +340,8 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
       )}
 
       <aside className="side-col">
-        <section className="panel briefing">
-          <div className="chips">
-            <span className="chip">📐 {stage.w}×{stage.h}</span>
-            <span className="chip">⏱ {stage.maxTurns} turns</span>
-            <span className="chip" title="Enemy skill">{'💀'.repeat(difficulty(stage))}</span>
-            <span className="chip" title={firstClear ? 'Doubled on first win' : 'Reward'}>🪙 {stage.reward}{firstClear && <b className="bonus">×2</b>}</span>
-            <span className="chip" title="Loot multiplier">💰 ×{stage.lootMult}</span>
-            {stage.hard && <span className="chip hard-chip">🔥 Hard</span>}
-            {(stage.enemyRank ?? 0) > 0 && (
-              <span className="chip" title="Enemy rank">
-                <Insignia rank={stage.enemyRank!} /> {RANKS[stage.enemyRank!]}
-              </span>
-            )}
-            {stage.extra && <span className="chip" title="No cards on bonus stages">🚫🃏</span>}
-          </div>
-          <div className="roster">
-            {boss && <span className="roster-item">{boss.emoji} {boss.name}</span>}
-            {enemyRoster(stage.layout).map(([t, n]) => (
-              <span key={t} className="roster-item">
-                <PieceGlyph type={t} side="E" /> ×{n}
-              </span>
-            ))}
-          </div>
+        <section className="panel briefing only-desktop">
+          <div className="chips">{infoChips}</div>
           {boss && (
             <div className="boss-brief" style={{ ['--aura' as string]: boss.aura }}>
               <div className="boss-brief-head">
@@ -343,12 +353,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
               </div>
             </div>
           )}
-          {scoutUnit && scoutUnit.type !== 'boss' && (
-            <div className="scout">
-              <PieceGlyph type={scoutUnit.type} side="E" rank={scoutUnit.rank} className="big" />
-              <b>{PIECES[scoutUnit.type].name}</b>
-            </div>
-          )}
+          {scoutChip && <div className="chips">{scoutChip}</div>}
         </section>
 
         <section className="panel tray-panel">

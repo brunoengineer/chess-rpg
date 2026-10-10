@@ -219,3 +219,16 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
+
+/* ───────────────────────── Deploy layout ───────────────────────── */
+.only-mobile { display: none; }
+.stage-titles { display: grid; }
+.boss-chip { border-color: color-mix(in srgb, var(--aura) 60%, transparent); background: color-mix(in srgb, var(--aura) 18%, rgba(0, 0, 0, 0.3)); }
+.scout-chip .glyph { font-size: 1.2rem; }
+@media (max-width: 900px) {
+  .only-desktop { display: none !important; }
+  .stage-strip.only-mobile { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%; max-width: 640px; }
+  .deploy-head { position: relative; justify-content: center; min-height: 44px; }
+  .deploy-head > .btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
+  .deploy-head .stage-titles { text-align: center; padding: 0 68px; }
+}
