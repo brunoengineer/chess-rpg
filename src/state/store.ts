@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { StageDef } from '../game/types';
 import { firebaseEnabled, loadCloudSave, signInWithGoogle, signOutUser, watchAuth, writeCloudSave } from './firebase';
-import { defaultSave, hasProgress, normalizeSave, type SaveData } from './save';
+import { chooseAccountSave, defaultSave, normalizeSave, type SaveData } from './save';
 
 export type Tab = 'campaign' | 'arena' | 'shop' | 'barracks';
 export type View = { name: 'hub'; tab: Tab } | { name: 'deploy'; stage: StageDef } | { name: 'battle' };
@@ -63,6 +63,17 @@ function writeLocal(uid: string, s: SaveData) {
   }
 }
 
+/** Renames a local save (kept as a backup, never read again by the game). */
+function moveLocal(from: string, to: string) {
+  try {
+    const raw = localStorage.getItem(localKey(from));
+    if (raw) localStorage.setItem(localKey(to), raw);
+    localStorage.removeItem(localKey(from));
+  } catch {
+    /* storage blocked: nothing to move */
+  }
+}
+
 let cloudTimer: ReturnType<typeof setTimeout> | null = null;
 let toastSeq = 0;
 let bootImpl: () => void = () => {};
@@ -120,12 +131,17 @@ export const useStore = create<AppStore>((set, get) => {
       console.error('Cloud load failed', e);
       cloudOk = false;
     }
-    let save = [local, cloud].filter(Boolean).sort((a, b) => b!.updatedAt - a!.updatedAt)[0] ?? null;
-    if (!save) {
-      // First sign-in: carry over guest progress if there is any.
-      const guest = readLocal('guest');
-      save = guest && hasProgress(guest) ? guest : defaultSave();
+    const choice = chooseAccountSave(local, cloud, cloudOk, readLocal('guest'));
+    if (choice.kind === 'abort') {
+      // We can't tell whether this account already has progress in the cloud: starting fresh would
+      // overwrite it on the next save, so stop and let the player retry.
+      await signOutUser();
+      set({ phase: 'login', player: null, authError: "Couldn't load your cloud save. Check your connection and try again." });
+      return;
     }
+    const save = choice.save;
+    // Guest progress moves into this account only once; other new accounts on this browser start fresh.
+    if (choice.fromGuest) moveLocal('guest', `guest-moved-to-${user.uid}`);
     enterGame(player, save);
     set({ sync: cloudOk ? 'saved' : 'error' });
     localStorage.removeItem(GUEST_FLAG);

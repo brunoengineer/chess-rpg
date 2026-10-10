@@ -129,3 +129,20 @@ export function classRanks(xp: Counts): Partial<Record<PieceType, number>> {
   }
   return out;
 }
+
+export type SaveChoice =
+  | { kind: 'abort' }
+  | { kind: 'use'; save: SaveData; fromGuest: boolean };
+
+/**
+ * Which save a signed-in account gets: the newest of its local and cloud copies; a brand-new account takes
+ * this browser's guest progress (once); if the cloud is unreachable and nothing is cached, abort rather
+ * than risk overwriting a real cloud save.
+ */
+export function chooseAccountSave(local: SaveData | null, cloud: SaveData | null, cloudOk: boolean, guest: SaveData | null): SaveChoice {
+  if (!cloudOk && !local) return { kind: 'abort' };
+  const newest = [local, cloud].filter((s): s is SaveData => !!s).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  if (newest) return { kind: 'use', save: newest, fromGuest: false };
+  if (guest && hasProgress(guest)) return { kind: 'use', save: guest, fromGuest: true };
+  return { kind: 'use', save: defaultSave(), fromGuest: false };
+}
