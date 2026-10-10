@@ -162,6 +162,7 @@ button { font: inherit; color: inherit; }
   border-bottom: 1px solid var(--border);
 }
 .brand { display: flex; align-items: center; gap: 8px; background: none; border: 0; cursor: pointer; padding: 0; }
+.brand:disabled { cursor: default; } /* in a match: leave with Retreat, not the logo */
 .brand-glyph { font-family: var(--chess); font-size: 1.8rem; color: var(--gold); filter: drop-shadow(0 0 8px rgba(246, 196, 83, 0.4)); }
 .brand-name { font-family: var(--display); font-weight: 800; font-size: 1.15rem; }
 .tabs { display: flex; gap: 4px; margin: 0 auto; }
@@ -180,6 +181,11 @@ button { font: inherit; color: inherit; }
   background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border);
 }
 .pill-coins { color: #ffe08a; border-color: rgba(246, 196, 83, 0.35); }
+button.pill-link { font: inherit; font-weight: 700; cursor: pointer; transition: background 0.15s, transform 0.1s; }
+button.pill-link:not(.pill-coins) { color: var(--text); }
+button.pill-link:hover:not(:disabled) { background: rgba(246, 196, 83, 0.14); }
+button.pill-link:active:not(:disabled) { transform: scale(0.96); }
+button.pill-link:disabled { cursor: default; opacity: 1; }
 .sync { font-size: 1.05rem; cursor: help; }
 .avatar { width: 36px; height: 36px; border-radius: 50%; border: 2px solid rgba(246, 196, 83, 0.5); padding: 0; overflow: hidden; background: rgba(255, 255, 255, 0.08); cursor: pointer; display: grid; place-items: center; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }

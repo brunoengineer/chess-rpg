@@ -25,12 +25,12 @@ export function AnimatedNumber({ value }: { value: number }) {
   return <>{shown.toLocaleString()}</>;
 }
 
-export function CoinPill({ amount }: { amount: number }) {
+export function CoinPill({ amount, onClick }: { amount: number; onClick?: () => void }) {
   return (
-    <span className="pill pill-coins" title="Coins">
+    <button className="pill pill-coins pill-link" title="Coins · open the Shop" onClick={onClick} disabled={!onClick}>
       <span className="coin-icon">🪙</span>
       <AnimatedNumber value={amount} />
-    </span>
+    </button>
   );
 }
 
@@ -44,12 +44,14 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export function TopBar() {
   const { save, player, view, setView, sync, setSettingsOpen, setTutorialOpen } = useStore();
   const tab = view.name === 'hub' ? view.tab : null;
+  // Coins and leadership open the Shop (not mid-battle, so a stray tap can't pull you out of a fight).
+  const toShop = view.name === 'battle' ? undefined : () => setView({ name: 'hub', tab: 'shop' });
   const syncIcon = player?.guest ? '💾' : sync === 'saving' ? '⏳' : sync === 'error' ? '⚠️' : '☁️';
   const syncTitle = player?.guest ? 'Guest: saved on this device only' : sync === 'saving' ? 'Saving…' : sync === 'error' ? 'Cloud save failed — will retry on next change' : 'Saved to the cloud';
   return (
     <>
       <header className="topbar">
-        <button className="brand" onClick={() => setView({ name: 'hub', tab: 'campaign' })}>
+        <button className="brand" onClick={() => setView({ name: 'hub', tab: 'campaign' })} disabled={view.name === 'battle'}>
           <span className="brand-glyph">♞&#xFE0E;</span>
           <span className="brand-name">Gambit Quest</span>
         </button>
@@ -64,10 +66,10 @@ export function TopBar() {
           </nav>
         )}
         <div className="topbar-right">
-          <CoinPill amount={save.coins} />
-          <span className="pill" title="Leadership: command points available to deploy pieces">
+          <CoinPill amount={save.coins} onClick={toShop} />
+          <button className="pill pill-link" title="Leadership · upgrade it in the Shop" onClick={toShop} disabled={!toShop}>
             👑 {save.leadership}
-          </span>
+          </button>
           <span className="sync" title={syncTitle}>
             {syncIcon}
           </span>
