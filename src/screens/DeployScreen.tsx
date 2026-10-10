@@ -23,8 +23,6 @@ interface DragState {
   x0: number;
   y0: number;
   started: boolean;
-  /** On touch, the piece floats above the finger so the target square stays visible. */
-  lift: number;
 }
 
 /** Pixels the pointer must travel before a press becomes a drag (otherwise it's a tap). */
@@ -152,8 +150,8 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
   const beginDrag = (src: DragSource, e: ReactPointerEvent) => {
     if (e.button !== 0) return;
     suppressClick.current = false;
-    const cell = (boardRef.current?.getBoundingClientRect().width ?? 360) / stage.w;
-    dragRef.current = { src, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, started: false, lift: e.pointerType === 'touch' ? cell * 0.7 : 0 };
+    // The piece stays exactly under the finger/cursor, and drops on the square under it.
+    dragRef.current = { src, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, started: false };
   };
 
   const endDrag = () => {
@@ -173,7 +171,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
       document.body.classList.add('dragging');
     }
     e.preventDefault();
-    const x = e.clientX, y = e.clientY - d.lift;
+    const x = e.clientX, y = e.clientY;
     const sq = cellAt(x, y);
     const piece = d.src.from === 'tray' ? d.src.item : placements[d.src.index];
     const size = (boardRef.current?.getBoundingClientRect().width ?? 360) / stage.w;
@@ -191,7 +189,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     // Swallow the click the browser may fire after the drop.
     suppressClick.current = true;
     setTimeout(() => (suppressClick.current = false), 300);
-    const plan = planDrop(d.src, cellAt(e.clientX, e.clientY - d.lift));
+    const plan = planDrop(d.src, cellAt(e.clientX, e.clientY));
     if (plan === 'leadership') useStore.getState().toast('Not enough leadership', '👑');
     else if (plan) {
       setPlacements(plan);
