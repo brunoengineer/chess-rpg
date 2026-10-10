@@ -231,6 +231,8 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   .deploy-head { position: relative; justify-content: center; min-height: 44px; }
   .deploy-head > .btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
   .deploy-head .stage-titles { text-align: center; padding: 0 68px; }
+  /* Fight sits right under the board, so you don't scroll down and back up to start. */
+  .tray-panel .start-btn { order: -1; }
 }
 
 /* ───────────────────────── Tutorial ───────────────────────── */
