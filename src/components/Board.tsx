@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, PointerEvent as ReactPointerEvent, Ref } from 'react';
 import type { RegionDef } from '../game/campaign';
 import { PIECES } from '../game/pieces';
 import type { Battle, PieceType, UnitType } from '../game/types';
@@ -32,9 +32,21 @@ interface BoardProps {
   /** Squares a card can target right now. */
   targets?: Set<number>;
   onCell?: (x: number, y: number) => void;
+  /* Drag & drop (deploy screen) */
+  boardRef?: Ref<HTMLDivElement>;
+  /** Squares holding a piece that can be dragged. */
+  dragHandles?: Set<number>;
+  onCellPointerDown?: (x: number, y: number, e: ReactPointerEvent) => void;
+  /** Square under the dragged piece, and whether dropping there is allowed. */
+  dropTarget?: { sq: number; ok: boolean } | null;
+  /** Square whose piece is being dragged (shown faded). */
+  draggingFrom?: number | null;
 }
 
-export function Board({ battle, theme, selected, hints, hintTone = 'player', deployZone, fx = [], shake, dimmed, levels, targets, onCell }: BoardProps) {
+export function Board({
+  battle, theme, selected, hints, hintTone = 'player', deployZone, fx = [], shake, dimmed, levels, targets, onCell,
+  boardRef, dragHandles, onCellPointerDown, dropTarget, draggingFrom,
+}: BoardProps) {
   const { w, h, grid, units, lastMove, telegraph } = battle;
   const pct = (n: number, of: number) => `${(n / of) * 100}%`;
   const tele = new Set(telegraph?.squares ?? []);
@@ -49,7 +61,7 @@ export function Board({ battle, theme, selected, hints, hintTone = 'player', dep
 
   return (
     <div className={`board-frame ${shake ? 'shake' : ''} ${dimmed ? 'dimmed' : ''}`} style={style}>
-      <div className="board" style={{ aspectRatio: `${w} / ${h}` }}>
+      <div className="board" ref={boardRef} style={{ aspectRatio: `${w} / ${h}` }}>
         {grid.map((c, i) => {
           const x = i % w, y = Math.floor(i / w);
           const dark = (x + y) % 2 === 1;
@@ -64,9 +76,16 @@ export function Board({ battle, theme, selected, hints, hintTone = 'player', dep
             tele.has(i) && `tele tele-${telegraph!.kind}`,
             hint && `hint hint-${hint} tone-${hintTone}`,
             targets?.has(i) && 'card-target',
+            dragHandles?.has(i) && 'drag-handle',
+            dropTarget?.sq === i && (dropTarget.ok ? 'drop-ok' : 'drop-bad'),
           ].filter(Boolean).join(' ');
           return (
-            <div key={i} className={cls} onClick={() => onCell?.(x, y)}>
+            <div
+              key={i}
+              className={cls}
+              onClick={() => onCell?.(x, y)}
+              onPointerDown={onCellPointerDown && ((e) => onCellPointerDown(x, y, e))}
+            >
               {c === -1 && <span className="rock-stone" />}
               {tele.has(i) && <span className="tele-icon">{telegraph!.kind === 'breath' ? '🔥' : '⚠'}</span>}
             </div>
@@ -77,7 +96,9 @@ export function Board({ battle, theme, selected, hints, hintTone = 'player', dep
           !u.alive ? null : (
             <div
               key={u.id}
-              className={`unit ${u.id === selected ? 'selected' : ''} ${u.type === 'boss' ? 'is-boss' : ''} side-${u.side}`}
+              className={`unit ${u.id === selected ? 'selected' : ''} ${u.type === 'boss' ? 'is-boss' : ''} side-${u.side} ${
+                draggingFrom === u.y * w + u.x ? 'drag-source' : ''
+              }`}
               style={{ left: pct(u.x, w), top: pct(u.y, h), width: pct(u.size, w), height: pct(u.size, h) }}
             >
               {u.type === 'boss' ? (

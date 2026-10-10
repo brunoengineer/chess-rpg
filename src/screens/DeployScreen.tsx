@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { sfx } from '../audio';
 import { Board, type HintKind } from '../components/Board';
 import { Insignia, PieceGlyph } from '../components/Piece';
@@ -15,6 +15,19 @@ import { useStore } from '../state/store';
 import { enemyRoster } from './ArenaTab';
 
 type TrayItem = { type: PieceType; temp: boolean };
+type DragSource = { from: 'tray'; item: TrayItem } | { from: 'board'; index: number };
+interface DragState {
+  src: DragSource;
+  pointerId: number;
+  x0: number;
+  y0: number;
+  started: boolean;
+  /** On touch, the piece floats above the finger so the target square stays visible. */
+  lift: number;
+}
+
+/** Pixels the pointer must travel before a press becomes a drag (otherwise it's a tap). */
+const DRAG_THRESHOLD = 6;
 
 export function difficulty(stage: StageDef): number {
   const { depth, blunder } = stage.ai;
@@ -120,7 +133,120 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     for (const m of genUnitMoves(preview, scout)) hints.set(m.y * stage.w + m.x, m.kind === 'move' ? 'move' : 'capture');
   }
 
+  /* ---------------- Drag & drop ---------------- */
+  const boardRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const suppressClick = useRef(false);
+  const [ghost, setGhost] = useState<{ type: PieceType; temp: boolean; x: number; y: number; size: number; removing: boolean } | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ sq: number; ok: boolean } | null>(null);
+  const dragFrom = ghost && dragRef.current?.src.from === 'board' ? dragRef.current.src.index : null;
+
+  /** Placements after dropping `src` on square `sq` (null = off the board), or why it can't be dropped there. */
+  const planDrop = (src: DragSource, sq: number | null): Placement[] | 'leadership' | null => {
+    if (sq === null) return src.from === 'board' ? placements.filter((_, j) => j !== src.index) : null;
+    if (!zone.has(sq)) return null;
+    const x = sq % stage.w, y = Math.floor(sq / stage.w);
+    const o = placements.findIndex((p) => p.x === x && p.y === y);
+    if (src.from === 'tray') {
+      if (remaining(src.item) <= 0) return null;
+      const freed = o >= 0 ? cost(placements[o].type) : 0;
+      if (used - freed + cost(src.item.type) > save.leadership) return 'leadership';
+      const placed = { ...src.item, x, y };
+      return o >= 0 ? placements.map((p, j) => (j === o ? placed : p)) : [...placements, placed];
+    }
+    const moving = placements[src.index];
+    // Move to an empty square, or swap with the piece already there.
+    return placements.map((p, j) => (j === src.index ? { ...p, x, y } : j === o ? { ...p, x: moving.x, y: moving.y } : p));
+  };
+
+  const cellAt = (cx: number, cy: number): number | null => {
+    const r = boardRef.current?.getBoundingClientRect();
+    if (!r) return null;
+    const x = Math.floor(((cx - r.left) / r.width) * stage.w), y = Math.floor(((cy - r.top) / r.height) * stage.h);
+    return x >= 0 && y >= 0 && x < stage.w && y < stage.h ? y * stage.w + x : null;
+  };
+
+  const beginDrag = (src: DragSource, e: ReactPointerEvent) => {
+    if (e.button !== 0) return;
+    suppressClick.current = false;
+    const cell = (boardRef.current?.getBoundingClientRect().width ?? 360) / stage.w;
+    dragRef.current = { src, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, started: false, lift: e.pointerType === 'touch' ? cell * 0.7 : 0 };
+  };
+
+  const endDrag = () => {
+    dragRef.current = null;
+    setGhost(null);
+    setDropTarget(null);
+    document.body.classList.remove('dragging');
+  };
+
+  const onPointerMove = (e: PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    if (!d.started) {
+      if (Math.hypot(e.clientX - d.x0, e.clientY - d.y0) < DRAG_THRESHOLD) return;
+      d.started = true;
+      setScout(null);
+      document.body.classList.add('dragging');
+    }
+    e.preventDefault();
+    const x = e.clientX, y = e.clientY - d.lift;
+    const sq = cellAt(x, y);
+    const piece = d.src.from === 'tray' ? d.src.item : placements[d.src.index];
+    const size = (boardRef.current?.getBoundingClientRect().width ?? 360) / stage.w;
+    setGhost({ type: piece.type, temp: piece.temp, x, y, size, removing: sq === null && d.src.from === 'board' });
+    setDropTarget(sq === null ? null : { sq, ok: Array.isArray(planDrop(d.src, sq)) });
+  };
+
+  const onPointerUp = (e: PointerEvent) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    if (!d.started) {
+      dragRef.current = null; // a tap: the normal click handlers take over
+      return;
+    }
+    // Swallow the click the browser may fire after the drop.
+    suppressClick.current = true;
+    setTimeout(() => (suppressClick.current = false), 300);
+    const plan = planDrop(d.src, cellAt(e.clientX, e.clientY - d.lift));
+    if (plan === 'leadership') useStore.getState().toast('Not enough leadership', '👑');
+    else if (plan) {
+      setPlacements(plan);
+      sfx.move();
+      if (d.src.from === 'tray' && remaining(d.src.item) <= 1 && tray?.type === d.src.item.type && tray.temp === d.src.item.temp) setTray(null);
+    }
+    endDrag();
+  };
+
+  // Window listeners call the latest handlers (they read current placements).
+  const handlers = useRef({ onPointerMove, onPointerUp, endDrag });
+  handlers.current = { onPointerMove, onPointerUp, endDrag };
+  useEffect(() => {
+    const move = (e: PointerEvent) => handlers.current.onPointerMove(e);
+    const up = (e: PointerEvent) => handlers.current.onPointerUp(e);
+    const cancel = () => handlers.current.endDrag();
+    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', cancel);
+    return () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', cancel);
+      document.body.classList.remove('dragging');
+    };
+  }, []);
+
+  const dragHandles = useMemo(() => new Set(placements.map((p) => p.y * stage.w + p.x)), [placements, stage.w]);
+  const onCellPointerDown = (x: number, y: number, e: ReactPointerEvent) => {
+    const index = placements.findIndex((p) => p.x === x && p.y === y);
+    if (index >= 0) beginDrag({ from: 'board', index }, e);
+  };
+
   const onCell = (x: number, y: number) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
     const i = y * stage.w + x;
     const existing = placements.findIndex((p) => p.x === x && p.y === y);
     if (existing >= 0) {
@@ -160,8 +286,27 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
             <h2>{stage.name}</h2>
           </div>
         </div>
-        <Board battle={preview} theme={theme} deployZone={zone} hints={hints} hintTone="enemy" selected={scout} levels={levels} onCell={onCell} />
+        <Board
+          battle={preview}
+          theme={theme}
+          deployZone={zone}
+          hints={hints}
+          hintTone="enemy"
+          selected={scout}
+          levels={levels}
+          onCell={onCell}
+          boardRef={boardRef}
+          dragHandles={dragHandles}
+          onCellPointerDown={onCellPointerDown}
+          dropTarget={dropTarget}
+          draggingFrom={dragFrom !== null && placements[dragFrom] ? placements[dragFrom].y * stage.w + placements[dragFrom].x : null}
+        />
       </div>
+      {ghost && (
+        <div className={`drag-ghost ${ghost.removing ? 'removing' : ''}`} style={{ left: ghost.x, top: ghost.y, fontSize: ghost.size * 0.8 }}>
+          <PieceGlyph type={ghost.type} temp={ghost.temp} rank={ranks[ghost.type]} level={levels[ghost.type]} />
+        </div>
+      )}
 
       <aside className="side-col">
         <section className="panel briefing">
@@ -223,7 +368,12 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
                   key={`${it.type}-${it.temp}`}
                   className={`tray-item ${active ? 'active' : ''}`}
                   disabled={left <= 0}
-                  onClick={() => { setTray(active ? null : it); sfx.select(); }}
+                  onPointerDown={(e) => left > 0 && beginDrag({ from: 'tray', item: it }, e)}
+                  onClick={() => {
+                    if (suppressClick.current) return void (suppressClick.current = false);
+                    setTray(active ? null : it);
+                    sfx.select();
+                  }}
                   title={`${PIECES[it.type].name}${it.temp ? ' (mercenary)' : ''}`}
                 >
                   <PieceGlyph type={it.type} temp={it.temp} rank={ranks[it.type]} />

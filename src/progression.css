@@ -196,3 +196,26 @@
 .hard-toggle + .region-stars { margin-left: 10px; }
 .region.hard { box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 2px rgba(255, 106, 61, 0.45); }
 .hard-chip { color: #ffb08a; border-color: rgba(255, 106, 61, 0.5); }
+
+/* ───────────────────────── Drag & drop (deploy) ───────────────────────── */
+/* Only draggable things block touch scrolling; the rest of the page scrolls normally. */
+.cell.drag-handle { cursor: grab; touch-action: none; }
+.tray-item:not(:disabled) { touch-action: none; cursor: grab; }
+.cell.drop-ok::after { inset: 3%; border-radius: 14%; border: 3px solid #73d98f; background: rgba(115, 217, 143, 0.28); box-shadow: 0 0 16px rgba(115, 217, 143, 0.6); }
+.cell.drop-bad::after { inset: 3%; border-radius: 14%; border: 3px solid #ff5d55; background: rgba(255, 93, 85, 0.22); }
+.unit.drag-source { opacity: 0.3; }
+/* While setting up, pieces appear where they're dropped: no slide animation (that's for battle moves). */
+.deploy .unit { transition: none; }
+.drag-ghost {
+  position: fixed; z-index: 100; pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.12);
+  filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.55));
+}
+.drag-ghost.removing { opacity: 0.55; transform: translate(-50%, -50%) scale(0.9); }
+.drag-ghost.removing::after {
+  content: '✕'; position: absolute; right: 0; top: 0;
+  display: grid; place-items: center; width: 1.6em; height: 1.6em;
+  font: 800 clamp(9px, 0.14em, 12px)/1 Inter, sans-serif; color: #fff; background: #ff5d55; border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+body.dragging, body.dragging * { cursor: grabbing !important; user-select: none; }
