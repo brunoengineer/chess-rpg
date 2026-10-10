@@ -119,7 +119,7 @@ export function LeaderboardTab() {
               s.ladder.arenaRunsAtBest = s.ladder.arenaRuns;
             }
           });
-          await syncLadder();
+          if (!(await syncLadder())) useStore.getState().toast("Couldn't save to the leaderboard — try again", '⚠️');
           refresh();
         }}
         onLeave={async () => {

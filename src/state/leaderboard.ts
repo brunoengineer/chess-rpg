@@ -47,25 +47,27 @@ const fake = (): LadderEntry[] | null =>
 
 const COL = 'leaderboard';
 
-/** Writes (or refreshes) the signed-in player's entry, if they joined. Failures are logged, never thrown. */
-export async function syncLadder(): Promise<void> {
+/** Writes (or refreshes) the signed-in player's entry, if they joined. Returns false if the write failed (never throws). */
+export async function syncLadder(): Promise<boolean> {
   const { player, save } = useStore.getState();
-  if (!player || player.guest || !save.ladder.joined || !save.ladder.nickname) return;
+  if (!player || player.guest || !save.ladder.joined || !save.ladder.nickname) return true;
   const entry = entryFromSave(player.uid, save);
   const f = fake();
   if (f) {
     const i = f.findIndex((e) => e.uid === entry.uid);
     if (i >= 0) f[i] = entry;
     else f.push(entry);
-    return;
+    return true;
   }
   const db = firestore();
-  if (!db) return;
+  if (!db) return false;
   const { uid, ...data } = entry;
   try {
     await setDoc(doc(db, COL, uid), { ...data, updatedAt: serverTimestamp() });
+    return true;
   } catch (e) {
     console.warn('Leaderboard update failed', e);
+    return false;
   }
 }
 
