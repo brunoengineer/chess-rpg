@@ -305,3 +305,30 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   60% { box-shadow: 0 0 0 4px rgba(246, 196, 83, 0.9), 0 0 28px 6px rgba(246, 196, 83, 0.45); }
   100% { box-shadow: 0 0 0 0 rgba(246, 196, 83, 0), 0 0 0 0 rgba(246, 196, 83, 0); }
 }
+
+/* ───────────────────────── Abilities (Barracks) ───────────────────────── */
+button.class-row { width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s; }
+button.class-row:hover { border-color: rgba(246, 196, 83, 0.5); background: rgba(246, 196, 83, 0.06); }
+button.class-row:active { transform: scale(0.99); }
+.class-more { font-size: 1.6rem; color: var(--gold); opacity: 0.7; padding-left: 4px; }
+.abilities { max-width: 440px; }
+.abilities-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; padding-right: 36px; }
+.abilities-head .glyph.big { font-size: 3rem; margin-right: 8px; }
+.abilities-head h2 { margin: 0; }
+.abilities-head > div { display: grid; gap: 2px; }
+.abilities-stats { margin-bottom: 12px; }
+.abilities .move-diagram { max-width: 180px; margin: 0 auto 14px; }
+.ability-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.ability-list li {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border); opacity: 0.55;
+}
+.ability-list li.on { opacity: 1; border-color: rgba(246, 196, 83, 0.55); background: rgba(246, 196, 83, 0.08); }
+.ability-list li > div { flex: 1; display: grid; gap: 3px; min-width: 0; }
+.ability-icon { width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center; font-size: 1.1rem; background: rgba(255, 255, 255, 0.06); }
+.ability-list li:not(.on) .ability-icon { filter: grayscale(1); }
+.ability-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ability-rank { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--muted); }
+.ability-rank .insignia { width: 16px; height: 12px; }
+.ability-list small { font-size: 0.82rem; line-height: 1.35; color: rgba(255, 255, 255, 0.82); }
+.ability-state { font-weight: 800; color: var(--gold); }

@@ -26,6 +26,8 @@ export const commandCost = (type: PieceType, rank = 0) => PIECES[type].command +
 export interface Perk {
   name: string;
   icon: string;
+  /** One plain line for players (shown in the Barracks). */
+  desc: string;
   /** Extra jumps (move or capture). */
   leaps?: number[][];
   /** Extra sliding directions. */
@@ -47,51 +49,39 @@ const DABBABA = ORTH.map(([x, y]) => [x * 2, y * 2]);
 const ALFIL = DIAG.map(([x, y]) => [x * 2, y * 2]);
 const CAMEL = [[1, 3], [3, 1], [-1, 3], [-3, 1], [1, -3], [3, -1], [-1, -3], [-3, -1]];
 
-const heavy: Perk = { name: 'Heavy blow', icon: '💥', bossDmg: 1 };
-const iron: Perk = { name: 'Iron will', icon: '🛡️', shield: true };
-const vault: Perk = { name: 'Vault', icon: '🦘', hop: true };
+const heavy: Perk = { name: 'Heavy blow', icon: '💥', desc: '+1 damage when it hits a boss.', bossDmg: 1 };
+const crushing: Perk = { ...heavy, name: 'Crushing blow', desc: 'Another +1 damage when it hits a boss.' };
+const iron: Perk = { name: 'Iron will', icon: '🛡️', desc: 'Survives the first capture each battle: the attacker bounces back.', shield: true };
+const vault: Perk = { name: 'Vault', icon: '🦘', desc: 'When sliding, can jump over one piece and keep going.', hop: true };
+const knightLeap = (name: string): Perk => ({ name, icon: '♞', desc: 'Can also jump like a Knight (L-shape).', leaps: KNIGHT });
+const camel: Perk = { name: 'Camel leap', icon: '🐪', desc: 'Can also make a long L-jump: 3 squares one way, 1 the other.', leaps: CAMEL };
+const flankStep: Perk = { name: 'Flank step', icon: '✚', desc: 'Can also step 1 square straight (no longer stuck on one color).', leaps: ORTH };
+const cornerStep: Perk = { name: 'Corner step', icon: '✕', desc: 'Can also step 1 square diagonally.', leaps: DIAG };
+const longStride: Perk = { name: 'Long stride', icon: '⇈', desc: 'Can also jump exactly 2 squares in a straight line.', leaps: DABBABA };
 
 /** Perk unlocked at Sergeant, Lieutenant, Major, Colonel, General (index 0–4). */
 export const PERKS: Record<PieceType, Perk[]> = {
   pawn: [
-    { name: 'Side step', icon: '↔', quiet: [[1, 0], [-1, 0]] },
-    { name: 'Forced march', icon: '⏫', pawnDouble: true },
-    { name: 'Spear thrust', icon: '🗡️', pawnCapFwd: true },
-    { name: 'Swift crown', icon: '👑', promoEarly: true },
-    { name: 'Amazon crown', icon: '💎', promoAmazon: true },
+    { name: 'Side step', icon: '↔', desc: 'Can also step 1 square left or right (without capturing).', quiet: [[1, 0], [-1, 0]] },
+    { name: 'Forced march', icon: '⏫', desc: 'Can always move 2 squares forward, not just on its first move.', pawnDouble: true },
+    { name: 'Spear thrust', icon: '🗡️', desc: 'Can also capture the piece straight in front of it.', pawnCapFwd: true },
+    { name: 'Swift crown', icon: '👑', desc: 'Promotes one row earlier (the second-to-last row).', promoEarly: true },
+    { name: 'Amazon crown', icon: '💎', desc: 'Promotes to an Amazon (Queen + Knight) instead of a Queen.', promoAmazon: true },
   ],
-  knight: [
-    { name: 'Long stride', icon: '⇈', leaps: DABBABA },
-    heavy,
-    { name: 'Camel leap', icon: '🐪', leaps: CAMEL },
-    iron,
-    { name: 'Knightrider', icon: '🌀', slides: KNIGHT },
-  ],
-  bishop: [
-    { name: 'Flank step', icon: '✚', leaps: ORTH },
-    heavy,
-    vault,
-    iron,
-    { name: 'Cardinal', icon: '♞', leaps: KNIGHT },
-  ],
+  knight: [longStride, heavy, camel, iron, { name: 'Knightrider', icon: '🌀', desc: 'Can repeat its L-jump in the same direction, like a sliding piece.', slides: KNIGHT }],
+  bishop: [flankStep, heavy, vault, iron, knightLeap('Cardinal')],
   warden: [
-    { name: 'Long stride', icon: '⇈', leaps: DABBABA },
+    longStride,
     heavy,
-    { name: 'Diagonal leap', icon: '⤢', leaps: ALFIL },
+    { name: 'Diagonal leap', icon: '⤢', desc: 'Can also jump exactly 2 squares diagonally.', leaps: ALFIL },
     iron,
-    { name: 'Rider', icon: '♞', leaps: KNIGHT },
+    knightLeap('Rider'),
   ],
-  rook: [
-    { name: 'Corner step', icon: '✕', leaps: DIAG },
-    heavy,
-    vault,
-    iron,
-    { name: 'Marshal', icon: '♞', leaps: KNIGHT },
-  ],
-  queen: [heavy, vault, iron, { ...heavy, name: 'Crushing blow' }, { name: 'Amazon', icon: '♞', leaps: KNIGHT }],
-  cardinal: [{ name: 'Flank step', icon: '✚', leaps: ORTH }, heavy, vault, iron, { name: 'Camel leap', icon: '🐪', leaps: CAMEL }],
-  marshal: [{ name: 'Corner step', icon: '✕', leaps: DIAG }, heavy, vault, iron, { name: 'Camel leap', icon: '🐪', leaps: CAMEL }],
-  amazon: [heavy, iron, vault, { ...heavy, name: 'Crushing blow' }, { name: 'Camel leap', icon: '🐪', leaps: CAMEL }],
+  rook: [cornerStep, heavy, vault, iron, knightLeap('Marshal')],
+  queen: [heavy, vault, iron, crushing, knightLeap('Amazon')],
+  cardinal: [flankStep, heavy, vault, iron, camel],
+  marshal: [cornerStep, heavy, vault, iron, camel],
+  amazon: [heavy, iron, vault, crushing, camel],
 };
 
 export interface Profile {
