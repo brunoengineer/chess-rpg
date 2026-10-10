@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Modal } from '../components/Modal';
 import { MoveDiagram } from '../components/MoveDiagram';
 import { Insignia, PieceGlyph } from '../components/Piece';
+import { RankTrack } from '../components/RankTrack';
 import { CARDS, CARD_ORDER } from '../game/cards';
 import { PIECES, PIECE_ORDER, bossDamage } from '../game/pieces';
 import { PERKS, RANKS, commandCost, levelInfo, profile } from '../game/ranks';
@@ -42,6 +43,7 @@ function AbilitiesModal({ type, onClose }: { type: PieceType; onClose: () => voi
           </small>
         </div>
       </header>
+      <RankTrack xp={xp} />
       <div className="chips abilities-stats">
         <span className="chip" title="Command cost">👑 {commandCost(type, info.rank)}</span>
         <span className="chip" title="Boss damage">⚔ {bossDamage(type) + profile(type, info.rank).bossDmg}</span>
@@ -95,9 +97,7 @@ export function BarracksTab() {
                     <span className="class-rank">{RANKS[info.rank]} · Lv {info.level}</span>
                     <span className="chip" title="Command cost">👑 {commandCost(t, info.rank)}</span>
                   </div>
-                  <div className="xp-bar" title={info.need ? `${info.into}/${info.need} XP` : 'Max level'}>
-                    <i style={{ width: `${info.need ? (info.into / info.need) * 100 : 100}%` }} />
-                  </div>
+                  <RankTrack xp={save.xp[t] ?? 0} />
                   <div className="perks">
                     {PERKS[t].map((p, i) => (
                       <span key={i} className={`perk ${i < info.rank ? 'on' : ''}`} title={`${RANKS[i + 1]}: ${p.name}`}>
