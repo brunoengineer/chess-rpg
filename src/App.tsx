@@ -6,6 +6,7 @@ import { BarracksTab } from './screens/BarracksTab';
 import { BattleScreen } from './screens/BattleScreen';
 import { CampaignTab } from './screens/CampaignTab';
 import { DeployScreen } from './screens/DeployScreen';
+import { LeaderboardTab } from './screens/LeaderboardTab';
 import { LoginScreen } from './screens/LoginScreen';
 import { ShopTab } from './screens/ShopTab';
 import { useStore } from './state/store';
@@ -40,6 +41,7 @@ export function App() {
         {view.name === 'hub' && view.tab === 'arena' && <ArenaTab />}
         {view.name === 'hub' && view.tab === 'shop' && <ShopTab />}
         {view.name === 'hub' && view.tab === 'barracks' && <BarracksTab />}
+        {view.name === 'hub' && view.tab === 'ranks' && <LeaderboardTab />}
         {view.name === 'deploy' && <DeployScreen key={view.stage.id} stage={view.stage} />}
         {view.name === 'battle' && <BattleScreen />}
       </main>

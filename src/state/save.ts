@@ -29,6 +29,18 @@ export interface ActiveBattle {
   preCards?: number;
 }
 
+export interface Ladder {
+  joined: boolean;
+  nickname: string | null;
+  /** Battles fought when the current star total was reached, and when. */
+  starsBattles: number;
+  starsAt: number;
+  /** Arena fights so far; fights and time when the current best level was reached. */
+  arenaRuns: number;
+  arenaRunsAtBest: number;
+  arenaAt: number;
+}
+
 export interface SaveData {
   v: 1;
   coins: number;
@@ -52,6 +64,8 @@ export interface SaveData {
   active: ActiveBattle | null;
   /** The how-to-play tutorial was shown (it opens automatically only once). */
   tutorialSeen: boolean;
+  /** Leaderboard: opt-in nickname, plus when/after how many battles the current scores were reached (tie-breaks). */
+  ladder: Ladder;
   updatedAt: number;
 }
 
@@ -73,6 +87,7 @@ export function defaultSave(): SaveData {
     settings: { showMoves: true, showEnemyMoves: true, sound: true, fastAnim: false },
     active: null,
     tutorialSeen: false,
+    ladder: { joined: false, nickname: null, starsBattles: 0, starsAt: 0, arenaRuns: 0, arenaRunsAtBest: 0, arenaAt: 0 },
     updatedAt: 0,
   };
 }
@@ -104,6 +119,7 @@ export function normalizeSave(raw: unknown): SaveData {
     cosmetics: { ...d.cosmetics, ...s.cosmetics },
     active: s.active ?? null,
     tutorialSeen: s.tutorialSeen ?? false,
+    ladder: { ...d.ladder, ...s.ladder },
     v: 1,
   };
 }

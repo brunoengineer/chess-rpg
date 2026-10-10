@@ -345,3 +345,77 @@ button.class-row:active { transform: scale(0.99); }
 .ability-rank .insignia { width: 16px; height: 12px; }
 .ability-list small { font-size: 0.82rem; line-height: 1.35; color: rgba(255, 255, 255, 0.82); }
 .ability-state { font-weight: 800; color: var(--gold); }
+
+/* ───────────────────────── Leaderboard ───────────────────────── */
+.ladder { max-width: 640px; margin: 0 auto; display: grid; gap: 14px; }
+.ladder .segmented { margin-bottom: 0; }
+.ladder-bar { display: flex; align-items: center; gap: 10px; }
+.ladder-bar .muted { margin-left: auto; }
+.ladder-rule-btn {
+  border: 1px solid var(--border); background: rgba(0, 0, 0, 0.3); color: var(--muted);
+  border-radius: 999px; padding: 5px 12px; font: 600 0.8rem Inter, sans-serif; cursor: pointer;
+}
+.ladder-rule-btn.on { color: var(--gold); border-color: rgba(246, 196, 83, 0.5); }
+.ladder-rule { margin: -6px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 0.85rem; color: rgba(255, 255, 255, 0.85); background: rgba(246, 196, 83, 0.08); border: 1px solid rgba(246, 196, 83, 0.25); }
+
+.join-card { display: grid; gap: 10px; }
+.join-card p { margin: 0; }
+.join-row { display: flex; gap: 8px; }
+.join-row input {
+  flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; font: 600 0.95rem Inter, sans-serif; color: var(--text);
+  background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.join-row input:focus { outline: none; border-color: rgba(246, 196, 83, 0.7); }
+.join-status { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.join-status .muted { margin-right: auto; }
+.join-status b { color: var(--text); }
+
+/* Podium: 2nd · 1st · 3rd */
+.podium { display: grid; grid-template-columns: repeat(3, 1fr); align-items: end; gap: 10px; padding-top: 8px; }
+.podium-slot { --medal: #f6c453; display: grid; justify-items: center; gap: 2px; min-width: 0; text-align: center; }
+.podium-slot.p2 { --medal: #cfd6e4; }
+.podium-slot.p3 { --medal: #d9915a; }
+.podium-glyph { font-size: 2.6rem; margin-bottom: 4px; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--medal) 55%, transparent)); }
+.podium-slot.p1 .podium-glyph { font-size: 3.2rem; }
+.podium-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; }
+.podium-value { font-weight: 800; color: var(--medal); }
+.podium-slot small { font-size: 0.72rem; }
+.podium-step {
+  width: 100%; margin-top: 8px; display: grid; place-items: center; border-radius: 12px 12px 4px 4px;
+  font: 800 1.6rem var(--display); color: #1a1205;
+  background: linear-gradient(180deg, var(--medal), color-mix(in srgb, var(--medal) 55%, #000));
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.podium-slot.p1 .podium-step { height: 78px; }
+.podium-slot.p2 .podium-step { height: 56px; }
+.podium-slot.p3 .podium-step { height: 42px; }
+.podium-slot.me .podium-name { color: var(--gold); }
+
+.ladder-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ladder-row {
+  display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--border);
+}
+.ladder-row.me { border-color: rgba(246, 196, 83, 0.7); background: rgba(246, 196, 83, 0.1); }
+.ladder-pos { font: 800 0.95rem var(--display); color: var(--muted); }
+.ladder-row.me .ladder-pos { color: var(--gold); }
+.ladder-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ladder-name em {
+  font-style: normal; font-size: 0.68rem; font-weight: 800; margin-left: 8px; padding: 2px 7px; border-radius: 99px;
+  color: #1a1205; background: var(--gold); vertical-align: 2px;
+}
+.ladder-value { display: grid; justify-items: end; font-weight: 800; color: var(--text); }
+.ladder-value small { font-weight: 500; font-size: 0.72rem; }
+/* Your row stays visible when you're outside the top 50. */
+.ladder-me { position: sticky; bottom: 16px; z-index: 5; padding: 6px; border-radius: 16px; background: rgba(13, 9, 26, 0.85); backdrop-filter: blur(10px); }
+.ladder-me .ladder-row { margin: 0; }
+.ladder-me p { margin: 6px 8px; }
+.ladder-empty { text-align: center; }
+.ladder-empty p { margin: 6px 0 10px; }
+.skeleton .ladder-row { height: 50px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@media (max-width: 760px) {
+  .ladder-me { bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .ladder-row { grid-template-columns: 52px 1fr auto; padding: 9px 12px; }
+  .podium-glyph { font-size: 2.1rem; }
+  .podium-slot.p1 .podium-glyph { font-size: 2.6rem; }
+}

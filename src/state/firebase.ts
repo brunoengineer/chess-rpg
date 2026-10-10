@@ -75,3 +75,8 @@ export async function writeCloudSave(uid: string, save: { updatedAt: number }) {
   if (!init()) return;
   await setDoc(doc(db!, 'saves', uid), { json: JSON.stringify(save), updatedAt: save.updatedAt, serverTime: serverTimestamp() });
 }
+
+/** Firestore handle (null when Firebase isn't configured). */
+export function firestore(): Firestore | null {
+  return init() ? db : null;
+}

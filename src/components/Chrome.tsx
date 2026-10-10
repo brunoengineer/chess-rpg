@@ -39,6 +39,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'arena', label: 'Arena', icon: '🏟️' },
   { id: 'shop', label: 'Shop', icon: '⚒️' },
   { id: 'barracks', label: 'Barracks', icon: '🛡️' },
+  { id: 'ranks', label: 'Ranks', icon: '🏆' },
 ];
 
 export function TopBar() {

@@ -4,8 +4,10 @@ import { BOARD_SKINS, PIECE_SKINS, skinKey } from '../game/cosmetics';
 import { leadershipCost, MAX_LEADERSHIP, type BattleResult } from '../game/economy';
 import { createBattle } from '../game/engine';
 import { PIECES } from '../game/pieces';
+import { totalStars } from '../game/ladder';
 import { levelInfo } from '../game/ranks';
 import type { PieceType, Placement, StageDef } from '../game/types';
+import { syncLadder } from './leaderboard';
 import { addCount, classRanks } from './save';
 import { useStore } from './store';
 
@@ -147,14 +149,25 @@ export function finishBattle(stage: StageDef, result: BattleResult, captures: nu
       const to = levelInfo(s.xp[type]!).level;
       if (to > from) levelUps.push({ type, from, to, rankUp: Math.floor(to / 10) > Math.floor(from / 10) });
     }
+    const starsBefore = totalStars(s.stages);
     if (stage.isArena) {
+      s.ladder.arenaRuns++;
       if (result.win) {
+        if (s.arena.level > s.arena.best) {
+          // New best: remember how many fights it took and when (leaderboard tie-breaks).
+          s.ladder.arenaRunsAtBest = s.ladder.arenaRuns;
+          s.ladder.arenaAt = Date.now();
+        }
         s.arena.best = Math.max(s.arena.best, s.arena.level);
         s.arena.level++;
       }
     } else if (result.win) {
       const prev = s.stages[stage.id] ?? { stars: 0, clears: 0 };
       s.stages[stage.id] = { stars: Math.max(prev.stars, result.stars), clears: prev.clears + 1 };
+    }
+    if (totalStars(s.stages) > starsBefore) {
+      s.ladder.starsBattles = s.stats.battles;
+      s.ladder.starsAt = Date.now();
     }
     // Skins earned by collecting every star of a world.
     for (const skin of PIECE_SKINS) {
@@ -167,6 +180,7 @@ export function finishBattle(stage: StageDef, result: BattleResult, captures: nu
     }
     s.active = null;
   });
+  void syncLadder();
   return {
     unlocked: firstClear ? unlocksOf(stage.id) : [],
     cardsUnlocked: firstClear ? CARD_ORDER.filter((c) => CARDS[c].unlockedBy === stage.id) : [],

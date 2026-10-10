@@ -9,7 +9,7 @@ import type { StageDef } from '../game/types';
 import type { SaveData } from './save';
 import type { ShopSection, Tab, View } from './store';
 
-const TABS: Tab[] = ['campaign', 'arena', 'shop', 'barracks'];
+const TABS: Tab[] = ['campaign', 'arena', 'shop', 'barracks', 'ranks'];
 const SECTIONS: ShopSection[] = ['army', 'cards', 'style'];
 export const HOME: View = { name: 'hub', tab: 'campaign' };
 
@@ -20,7 +20,9 @@ export function viewToHash(v: View): string {
     case 'deploy':
       return `#/deploy/${encodeURIComponent(v.stage.id)}`;
     case 'hub':
-      return v.tab === 'shop' && v.section && v.section !== 'army' ? `#/shop/${v.section}` : `#/${v.tab}`;
+      if (v.tab === 'shop' && v.section && v.section !== 'army') return `#/shop/${v.section}`;
+      if (v.tab === 'ranks' && v.board === 'arena') return '#/ranks/arena';
+      return `#/${v.tab}`;
   }
 }
 
@@ -49,6 +51,7 @@ export function hashToView(hash: string, save: SaveData): View | null {
   if (!a) return null;
   if ((TABS as string[]).includes(a)) {
     if (a === 'shop' && b && (SECTIONS as string[]).includes(b)) return { name: 'hub', tab: 'shop', section: b as ShopSection };
+    if (a === 'ranks' && b === 'arena') return { name: 'hub', tab: 'ranks', board: 'arena' };
     return { name: 'hub', tab: a as Tab };
   }
   if (a === 'deploy' && b) {

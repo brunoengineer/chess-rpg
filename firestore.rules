@@ -5,5 +5,45 @@ service cloud.firestore {
     match /saves/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Public leaderboard: anyone can read it; players write only their own entry, with plausible values.
+    match /leaderboard/{uid} {
+      allow read: if true;
+      allow delete: if isOwner(uid);
+      allow create: if isOwner(uid) && validEntry();
+      allow update: if isOwner(uid) && validEntry() && plausibleChange();
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Scores packed as primary × 10^12 + tie-breakers (see src/game/ladder.ts).
+    function validKey(key, primary) {
+      return key is int && key >= primary * 1000000000000 && key < (primary + 1) * 1000000000000;
+    }
+
+    function validEntry() {
+      let d = request.resource.data;
+      let fields = ['name', 'stars', 'starsBattles', 'starsKey', 'arena', 'arenaRuns', 'arenaKey', 'bosses', 'updatedAt'];
+      return d.keys().hasOnly(fields) && d.keys().hasAll(fields)
+        && d.name is string && d.name.matches('^[\\p{L}\\p{N} _.-]{3,16}$')
+        && d.stars is int && d.stars >= 0 && d.stars <= 330
+        && d.arena is int && d.arena >= 0 && d.arena <= 1000
+        && d.starsBattles is int && d.starsBattles >= 0
+        && d.arenaRuns is int && d.arenaRuns >= 0
+        && d.bosses is int && d.bosses >= 0
+        && validKey(d.starsKey, d.stars) && validKey(d.arenaKey, d.arena)
+        && d.updatedAt == request.time;
+    }
+
+    // One battle can't add more than a few stars or Arena levels, and updates are rate-limited.
+    function plausibleChange() {
+      let d = request.resource.data;
+      let o = resource.data;
+      return request.time > o.updatedAt + duration.value(3, 's')
+        && d.stars <= o.stars + 6
+        && d.arena <= o.arena + 3;
+    }
   }
 }

@@ -41,6 +41,10 @@ saves through Firebase.
   (quake, fire breath).
 - **Move hints** for your pieces and enemy scouting. You can turn both off in Settings.
 - **Endless Arena:** generated battles with growing rewards, and a boss every 5 levels.
+- **Leaderboards (🏆 Ranks):** ⭐ total stars and 🏟️ Arena best level, top 50 with a podium, plus your own position.
+  Ties: fewest battles (or Arena fights) to get there, then who got there first. Signed-in players opt in with a
+  nickname; only nicknames and scores are shown. Entries are sanity-checked by `firestore.rules` (scores are
+  still sent by the browser, so a determined cheater could fake one; delete such entries in the Firebase console).
 - **Stars:** ★ for a win, ★★ if you lost at most half of your army's value, ★★★ if you lost at most a quarter (and used
   no cards). Value counts: losing pawns is cheap, losing a Queen is not.
 - Pawns that reach the last row become Queens for the rest of the battle.
