@@ -36,8 +36,31 @@ export function difficulty(stage: StageDef): number {
   return blunder > 0.04 ? 4 : 5;
 }
 
+interface Draft {
+  placements: Placement[];
+  loadout: CardId[];
+}
+
+function readDraft(key: string): Draft | null {
+  try {
+    const d = JSON.parse(sessionStorage.getItem(key) ?? 'null');
+    return d && Array.isArray(d.placements) && Array.isArray(d.loadout) ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(key: string, d: Draft | null) {
+  try {
+    if (d) sessionStorage.setItem(key, JSON.stringify(d));
+    else sessionStorage.removeItem(key);
+  } catch {
+    /* storage blocked: drafts just won't survive a refresh */
+  }
+}
+
 export function DeployScreen({ stage }: { stage: StageDef }) {
-  const { save, setView } = useStore();
+  const { save, setView, player } = useStore();
   const ranks = useMemo(() => classRanks(save.xp), [save.xp]);
   const levels = useMemo(() => Object.fromEntries(PIECE_ORDER.map((t) => [t, levelInfo(save.xp[t] ?? 0).level])), [save.xp]);
   const cost: Cost = (t) => commandCost(t, ranks[t] ?? 0);
@@ -59,11 +82,19 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
     });
   };
   const lastFormation = save.formations[stage.id];
+  // An unfinished setup survives a refresh or a trip to the Shop (this tab only, re-validated on load).
+  const draftKey = `gq-draft-${player?.uid ?? 'guest'}-${stage.id}`;
+  const draft = useMemo(() => readDraft(draftKey), [draftKey]);
   const [placements, setPlacements] = useState<Placement[]>(() =>
-    lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost),
+    draft ? fits(draft.placements) : lastFormation ? fits(lastFormation) : autoDeploy(stage, save.army, save.mercs, save.leadership, blocked, cost),
   );
   const ownedCards = stage.extra ? [] : CARD_ORDER.filter((c) => (save.cards[c] ?? 0) > 0);
-  const [loadout, setLoadout] = useState<CardId[]>([]);
+  const [loadout, setLoadout] = useState<CardId[]>(() => (draft?.loadout ?? []).filter((c) => ownedCards.includes(c)).slice(0, save.cardSlots));
+  useEffect(() => writeDraft(draftKey, { placements, loadout }), [draftKey, placements, loadout]);
+  const fight = () => {
+    writeDraft(draftKey, null);
+    startBattle(stage, placements, loadout);
+  };
   const toggleCard = (c: CardId) =>
     setLoadout(loadout.includes(c) ? loadout.filter((x) => x !== c) : loadout.length < save.cardSlots ? [...loadout, c] : loadout);
   const [tray, setTray] = useState<TrayItem | null>(null);
@@ -356,7 +387,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
               ))}
             </div>
           )}
-          <button className="btn btn-primary btn-lg start-btn" disabled={!placements.length || !!save.active} onClick={() => startBattle(stage, placements, loadout)}>
+          <button className="btn btn-primary btn-lg start-btn" disabled={!placements.length || !!save.active} onClick={fight}>
             ⚔️ Fight
           </button>
         </section>

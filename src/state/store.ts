@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { StageDef } from '../game/types';
 import { firebaseEnabled, loadCloudSave, signInWithGoogle, signOutUser, watchAuth, writeCloudSave } from './firebase';
+import { HOME, clearHash, hashToView, initialView, writeHash } from './route';
 import { chooseAccountSave, defaultSave, normalizeSave, type SaveData } from './save';
 
 export type Tab = 'campaign' | 'arena' | 'shop' | 'barracks';
@@ -37,6 +38,7 @@ interface AppStore {
   /** Worlds currently shown in Hard mode on the map. */
   hardView: Record<number, boolean>;
   toggleHard: (region: number) => void;
+  setHardView: (region: number, on: boolean) => void;
   setView: (v: View) => void;
   update: (fn: (s: SaveData) => void) => void;
   toast: (text: string, icon?: string) => void;
@@ -76,6 +78,15 @@ function moveLocal(from: string, to: string) {
     localStorage.removeItem(localKey(from));
   } catch {
     /* storage blocked: nothing to move */
+  }
+}
+
+const HARD_KEY = 'gq-hard-view';
+function readHardView(): Record<number, boolean> {
+  try {
+    return JSON.parse(sessionStorage.getItem(HARD_KEY) ?? '{}');
+  } catch {
+    return {};
   }
 }
 
@@ -120,8 +131,12 @@ export const useStore = create<AppStore>((set, get) => {
     });
   }
 
-  const enterGame = (player: Player, save: SaveData) =>
-    set({ player, save, phase: 'game', view: save.active ? { name: 'battle' } : { name: 'hub', tab: 'campaign' } });
+  const enterGame = (player: Player, save: SaveData) => {
+    // Restore the screen from the URL (a battle in progress always wins).
+    const view = initialView(typeof location !== 'undefined' ? location.hash : '', save);
+    set({ player, save, phase: 'game', view });
+    writeHash(view, 'replace');
+  };
 
   const loadAccount = async (user: { uid: string; displayName: string | null; photoURL: string | null }) => {
     set({ phase: 'loading', authError: null });
@@ -153,8 +168,17 @@ export const useStore = create<AppStore>((set, get) => {
     if (!cloud || save.updatedAt > cloud.updatedAt) persist(save);
   };
 
-  bootImpl = () =>
-    watchAuth((user) => {
+  bootImpl = () => {
+    // Browser Back/Forward move between screens — but never out of a battle in progress (only Retreat does that).
+    window.addEventListener('popstate', () => {
+      const { phase, save, view } = get();
+      if (phase !== 'game') return;
+      if (save.active && view.name === 'battle') return writeHash(view, 'replace');
+      const next = hashToView(location.hash, save) ?? HOME;
+      set({ view: next });
+      writeHash(next, 'replace');
+    });
+    return watchAuth((user) => {
       if (user) {
         void loadAccount(user);
       } else if (localStorage.getItem(GUEST_FLAG)) {
@@ -163,6 +187,7 @@ export const useStore = create<AppStore>((set, get) => {
         set({ phase: 'login', player: null });
       }
     });
+  };
 
   return {
     phase: 'boot',
@@ -174,10 +199,22 @@ export const useStore = create<AppStore>((set, get) => {
     settingsOpen: false,
     tutorialOpen: false,
     authError: null,
-    hardView: {},
-    toggleHard: (region) => set({ hardView: { ...get().hardView, [region]: !get().hardView[region] } }),
+    hardView: readHardView(),
+    toggleHard: (region) => get().setHardView(region, !get().hardView[region]),
+    setHardView: (region, on) => {
+      const hardView = { ...get().hardView, [region]: on };
+      set({ hardView });
+      try {
+        sessionStorage.setItem(HARD_KEY, JSON.stringify(hardView));
+      } catch {
+        /* storage blocked: the toggle just won't survive a refresh */
+      }
+    },
 
-    setView: (view) => set({ view }),
+    setView: (view) => {
+      set({ view });
+      if (get().phase === 'game') writeHash(view, 'push');
+    },
 
     update: (fn) => {
       const s: SaveData = structuredClone(get().save);
@@ -223,6 +260,7 @@ export const useStore = create<AppStore>((set, get) => {
       localStorage.removeItem(GUEST_FLAG);
       await signOutUser();
       set({ phase: 'login', player: null, save: defaultSave(), settingsOpen: false });
+      clearHash();
     },
 
     resetProgress: () => {
@@ -230,7 +268,8 @@ export const useStore = create<AppStore>((set, get) => {
       const s = defaultSave();
       s.settings = keep;
       s.updatedAt = Date.now();
-      set({ save: s, view: { name: 'hub', tab: 'campaign' }, settingsOpen: false });
+      set({ save: s, view: HOME, settingsOpen: false });
+      writeHash(HOME, 'replace');
       persist(s);
     },
   };

@@ -521,8 +521,7 @@ function ResultModal({ final }: { final: Final }) {
           className="unlock"
           onClick={() => {
             // Open the campaign with this world already switched to Hard mode.
-            const { hardView } = useStore.getState();
-            useStore.setState({ hardView: { ...hardView, [stage.region]: true } });
+            useStore.getState().setHardView(stage.region, true);
             home();
           }}
         >
