@@ -1,4 +1,5 @@
 import { BOSSES } from '../game/bosses';
+import { BossFigure } from './BossFigure';
 import { PIECES } from '../game/pieces';
 import { RANKS } from '../game/ranks';
 import type { BossKind, PieceType, Side } from '../game/types';
@@ -68,12 +69,12 @@ export function BossToken({ kind, hp, maxHp, cd }: { kind: BossKind; hp: number;
   const def = BOSSES[kind];
   return (
     <span className={`boss-token ${(cd ?? 0) > 1 ? 'stunned' : ''}`} style={{ ['--aura' as string]: def.aura }}>
-      <span className="boss-emoji">{def.emoji}</span>
-      <span className="boss-hp">
+      <span className="boss-hp" title={`${hp}/${maxHp} HP`}>
         {Array.from({ length: maxHp }, (_, i) => (
           <i key={i} className={i < hp ? 'on' : ''} />
         ))}
       </span>
+      <BossFigure kind={kind} />
     </span>
   );
 }

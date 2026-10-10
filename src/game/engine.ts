@@ -158,6 +158,47 @@ export function genUnitMoves(b: Battle, i: number, out: Move[] = []): Move[] {
   return out;
 }
 
+/**
+ * Squares to highlight when a unit is inspected. Bosses mark their whole 2×2 landing area (red where they would
+ * crush a piece), and a resting boss still shows where it can go once it wakes up.
+ */
+export function reachSquares(b: Battle, id: number): Map<number, 'move' | 'capture' | 'strike'> {
+  const u = b.units[id];
+  const out = new Map<number, 'move' | 'capture' | 'strike'>();
+  const mark = (x: number, y: number, size: number, kind: 'move' | 'capture' | 'strike') => {
+    for (let yy = y; yy < y + size; yy++)
+      for (let xx = x; xx < x + size; xx++) {
+        const sq = yy * b.w + xx;
+        if (out.get(sq) !== 'capture') out.set(sq, kind);
+      }
+  };
+  if (u.type === 'boss') {
+    let probe = b;
+    if ((u.cd ?? 0) > 0) {
+      probe = cloneBattle(b);
+      probe.units[id].cd = 0;
+    }
+    for (const m of genUnitMoves(probe, id)) {
+      for (let yy = m.y; yy < m.y + u.size; yy++)
+        for (let xx = m.x; xx < m.x + u.size; xx++) {
+          const c = b.grid[yy * b.w + xx];
+          const crush = c > 0 && b.units[c - 1].side !== u.side;
+          mark(xx, yy, 1, crush ? 'capture' : 'move');
+        }
+    }
+    // Its own squares are not destinations.
+    for (let yy = u.y; yy < u.y + u.size; yy++) for (let xx = u.x; xx < u.x + u.size; xx++) out.delete(yy * b.w + xx);
+    return out;
+  }
+  for (const m of genUnitMoves(b, id)) {
+    if (m.kind === 'strike') {
+      const t = b.units[m.target!];
+      mark(t.x, t.y, t.size, 'strike');
+    } else mark(m.x, m.y, 1, m.kind === 'move' ? 'move' : 'capture');
+  }
+  return out;
+}
+
 function genBossMoves(b: Battle, i: number, out: Move[]): Move[] {
   const u = b.units[i];
   if ((u.cd ?? 0) > 0) return out;

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { sfx } from '../audio';
 import { Board, type HintKind } from '../components/Board';
+import { BossFigure } from '../components/BossFigure';
 import { Insignia, PieceGlyph } from '../components/Piece';
 import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, REGIONS, isCleared } from '../game/campaign';
 import { CARDS, CARD_ORDER, type CardId } from '../game/cards';
-import { createBattle, genUnitMoves } from '../game/engine';
+import { createBattle, reachSquares } from '../game/engine';
 import { PIECES, PIECE_ORDER } from '../game/pieces';
 import { RANKS, commandCost, levelInfo } from '../game/ranks';
 import type { PieceType, Placement, StageDef } from '../game/types';
@@ -112,7 +113,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
 
   const hints = new Map<number, HintKind>();
   if (scout !== null && save.settings.showEnemyMoves) {
-    for (const m of genUnitMoves(preview, scout)) hints.set(m.y * stage.w + m.x, m.kind === 'move' ? 'move' : 'capture');
+    for (const [sq, k] of reachSquares(preview, scout)) hints.set(sq, k);
   }
 
   /* ---------------- Drag & drop ---------------- */
@@ -295,7 +296,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
           {infoChips}
           {boss && (
             <span className="chip boss-chip" title={boss.moveText} style={{ ['--aura' as string]: boss.aura }}>
-              {boss.emoji} {boss.name} · ❤️ {stage.boss!.hp ?? boss.hp}
+              <BossFigure kind={boss.kind} className="inline" /> {boss.name} · ❤️ {stage.boss!.hp ?? boss.hp}
             </span>
           )}
           {scoutChip}
@@ -328,7 +329,7 @@ export function DeployScreen({ stage }: { stage: StageDef }) {
           {boss && (
             <div className="boss-brief" style={{ ['--aura' as string]: boss.aura }}>
               <div className="boss-brief-head">
-                <span className="boss-brief-emoji">{boss.emoji}</span>
+                <BossFigure kind={boss.kind} className="brief" />
                 <div>
                   <b>{boss.name}</b>
                   <small>❤️ {stage.boss!.hp ?? boss.hp} · {boss.moveText}</small>

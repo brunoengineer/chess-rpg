@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { chooseMove } from './ai';
 import { arenaStage, STAGES } from './campaign';
-import { applyMove, createBattle, enemyPostTurn, enemyPreTurn, genMoves, genUnitMoves } from './engine';
+import { applyMove, createBattle, enemyPostTurn, enemyPreTurn, genMoves, genUnitMoves, reachSquares } from './engine';
 import { LETTERS } from './pieces';
 import type { Battle, FxEvent, Placement, StageDef } from './types';
 
@@ -75,6 +75,21 @@ describe('bosses', () => {
     b = applyMove(b, down);
     expect(b.units.filter((u) => u.side === 'P' && u.alive)).toHaveLength(1);
     expect(b.units.find((u) => u.type === 'boss')!.cd).toBe(1);
+  });
+
+  it('boss hints cover the whole 2x2 landing area, show crushes, and work while it rests', () => {
+    // Golem at (2,0) moves 1 square orthogonally: can land at (1,0), (3,0) or (2,1).
+    const b = createBattle(bossStage, [{ type: 'pawn', temp: false, x: 2, y: 2 }]);
+    const boss = b.units.find((u) => u.type === 'boss')!;
+    const sq = (x: number, y: number) => y * 6 + x;
+    const hints = reachSquares(b, boss.id);
+    expect(hints.get(sq(1, 0))).toBe('move'); // left landing, left column
+    expect(hints.get(sq(4, 1))).toBe('move'); // right landing, right column
+    expect(hints.get(sq(2, 2))).toBe('capture'); // landing one row down crushes the pawn
+    expect(hints.get(sq(3, 2))).toBe('move');
+    expect(hints.has(sq(2, 0))).toBe(false); // its own squares aren't destinations
+    boss.cd = 1; // resting
+    expect(reachSquares(b, boss.id).get(sq(2, 2))).toBe('capture');
   });
 
   it('telegraphed quake destroys adjacent player pieces next enemy turn', () => {

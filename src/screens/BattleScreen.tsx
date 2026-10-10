@@ -9,7 +9,7 @@ import { ARENA_THEME, REGIONS, arenaStage, isCleared, nextStage } from '../game/
 import { CARDS, cardPlayable, playCard, validSquares, type CardId } from '../game/cards';
 import { PIECE_SKINS } from '../game/cosmetics';
 import { computeResult, lootFromFx, type BattleResult } from '../game/economy';
-import { PASS, applyMove, cloneBattle, enemyPostTurn, enemyPreTurn, genMoves, genUnitMoves, material } from '../game/engine';
+import { PASS, applyMove, cloneBattle, enemyPostTurn, enemyPreTurn, genMoves, genUnitMoves, material, reachSquares } from '../game/engine';
 import { PIECES, PIECE_ORDER } from '../game/pieces';
 import { RANKS, levelInfo } from '../game/ranks';
 import type { Battle, FxEvent, Move, Outcome, PieceType, StageDef, Unit } from '../game/types';
@@ -265,8 +265,8 @@ export function BattleScreen() {
   const hints = new Map<number, HintKind>();
   const showHints = sel?.side === 'P' ? save.settings.showMoves : save.settings.showEnemyMoves;
   if (sel && sel.alive && showHints && !targeting) {
-    const ms = sel.side === 'P' ? selMoves : genUnitMoves(battle, sel.id);
-    for (const m of ms) {
+    if (sel.side === 'E') for (const [sq, k] of reachSquares(battle, sel.id)) hints.set(sq, k);
+    else for (const m of selMoves) {
       if (m.kind === 'strike') {
         const t = battle.units[m.target!];
         for (let y = t.y; y < t.y + t.size; y++) for (let x = t.x; x < t.x + t.size; x++) hints.set(y * battle.w + x, 'strike');

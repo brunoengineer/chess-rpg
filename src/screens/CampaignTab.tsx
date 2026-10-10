@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { BOSSES } from '../game/bosses';
+import { BossFigure } from '../components/BossFigure';
 import {
   MAIN_STAGES, REGIONS, STAGES, extraStarsNeeded, hardStage, hardStars, isCleared, isHardOpen, isStageUnlocked, mainStars,
 } from '../game/campaign';
@@ -20,7 +20,7 @@ function StageNode({ s, current }: { s: StageDef; current: boolean }) {
   const { save, setView } = useStore();
   const open = isStageUnlocked(save.stages, s);
   const p = save.stages[s.id];
-  const face = !open ? '🔒' : s.extra ? (s.isBoss ? BOSSES[s.boss!.kind].emoji : '✦') : s.isBoss ? BOSSES[s.boss!.kind].emoji : s.id.split('-')[1].replace('H', '');
+  const face = !open ? '🔒' : s.isBoss ? <BossFigure kind={s.boss!.kind} /> : s.extra ? '✦' : s.id.split('-')[1].replace('H', '');
   return (
     <button
       className={`stage-node ${s.isBoss ? 'boss' : ''} ${s.extra ? 'extra' : ''} ${p ? 'cleared' : ''} ${current ? 'current' : ''}`}

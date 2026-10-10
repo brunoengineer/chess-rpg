@@ -2,6 +2,7 @@ import { BOSSES } from '../game/bosses';
 import { ARENA_THEME, ARENA_UNLOCK, STAGE_BY_ID, arenaStage, isCleared } from '../game/campaign';
 import { LETTERS } from '../game/pieces';
 import type { PieceType } from '../game/types';
+import { BossFigure } from '../components/BossFigure';
 import { PieceGlyph } from '../components/Piece';
 import { useStore } from '../state/store';
 
@@ -39,7 +40,11 @@ export function ArenaTab() {
             <span className="chip">🏆 Best: {save.arena.best || '—'}</span>
           </div>
           <div className="roster">
-            {stage.boss && <span className="roster-item">{BOSSES[stage.boss.kind].emoji}</span>}
+            {stage.boss && (
+              <span className="roster-item">
+                <BossFigure kind={stage.boss.kind} className="inline" /> {BOSSES[stage.boss.kind].name}
+              </span>
+            )}
             {enemyRoster(stage.layout).map(([t, n]) => (
               <span key={t} className="roster-item">
                 <PieceGlyph type={t} side="E" /> ×{n}

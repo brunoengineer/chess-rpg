@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { RANKS } from '../game/ranks';
 import { useStore } from '../state/store';
 import { Modal } from './Modal';
+import { BossFigure } from './BossFigure';
 import { Insignia, PieceGlyph } from './Piece';
 
 interface Step {
@@ -21,7 +22,7 @@ function Journey() {
       <span className="tut-arrow">→</span>
       <PieceGlyph type="queen" />
       <span className="tut-arrow">→</span>
-      <span className="tut-boss">🐉</span>
+      <BossFigure kind="dragon" className="tut-boss" />
     </div>
   );
 }
